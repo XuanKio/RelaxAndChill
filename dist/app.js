@@ -1,8 +1,8 @@
 import { alphaBounds } from './background.js';
-import { ASSETS, COLORS, PRESETS } from './assets.js';
-import { smallImage, packScene, unpackScene, sceneURL, validateScene } from './share.js';
+import { ASSETS, COLORS, PRESETS } from './assets.js?v=20261004';
+import { smallImage, packScene, unpackScene, sceneURL, validateScene } from './share.js?v=20261004';
 import { createGrooming, tickGrooming, springFactor } from './grooming.js';
-import { sampleCoat, furCount, makeFur, advanceFur, drawFur } from './fur.js';
+import { sampleCoat, furCount, makeFur, advanceFur, drawFur } from './fur.js?v=20261004';
 let handSprite = null, furCarry = 0, petCycle = 0;
 let grooming = createGrooming(), travel = 0, keyboard = false, smooth = {x:470,y:270}, particles = [], lastParticle = 0;
 const $ = id => document.getElementById(id);

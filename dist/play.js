@@ -1,4 +1,4 @@
-import { ASSETS, PRESETS } from './assets.js';
+import { ASSETS, PRESETS } from './assets.js?v=20261004';
 let preset='mochi';
 const start=()=>{location.href='create.html#preset='+preset;};
 document.getElementById('start').onclick=start;

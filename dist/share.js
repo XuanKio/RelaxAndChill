@@ -1,4 +1,4 @@
-import { ASSETS, COLORS } from './assets.js';
+import { ASSETS, COLORS } from './assets.js?v=20261004';
 export const MAX_LINK_DATA = 42000;
 const MAX_JSON = 52000;
 const imagePattern = /^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/;
