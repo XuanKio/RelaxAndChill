@@ -121,3 +121,5 @@ body.tool-settings-open .panel-topbar{display:none}
 #manual-controls .tool-options button{flex:0 0 44px;width:44px;height:44px;min-height:44px}
 #manual-controls #undo{margin:0 4px 0 0;border:0;border-right:1px solid #dfe7d8;border-radius:10px 4px 4px 10px}
 #manual-controls .brush-settings{flex:1;min-height:0;width:100%;padding:0 4px 4px 2px}
+.background-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+.background-actions>*{width:100%;min-width:0;min-height:44px;justify-content:center}
