@@ -62,3 +62,34 @@ body{overflow-x:hidden}.site-header{height:76px;padding-top:14px;padding-bottom:
  .tool-choice-image{height:70px}
 }
 @media(prefers-reduced-motion:no-preference){#tool-picker:not([hidden]),#tool-settings:not([hidden]){animation:tool-panel-in .16s ease-out}@keyframes tool-panel-in{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}}
+
+/* Canvas actions stay inside the image; brush choices form a vertical rail. */
+.stage-edit{position:absolute;z-index:3;left:14px;bottom:14px;border:1px solid #ffffff99;border-radius:24px;background:#fffffff0;color:#42634c;min-width:44px;min-height:44px;padding:9px 13px;font-size:18px;display:flex;align-items:center;gap:7px;box-shadow:0 3px 12px #294a4010}
+.stage-edit span{font-size:12px}.stage-edit[aria-expanded=true]{background:#e8f3dc}
+.workspace-toolbar .play-modes{margin-right:auto}#export-gif{font-size:12px;font-weight:700;white-space:nowrap}
+.canvas-tool-buttons{flex-direction:column}.canvas-tools .canvas-tool{min-height:44px;padding:8px;font-size:12px}
+#manual-controls{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px}
+#manual-controls .tool-options{display:flex;flex-direction:column;gap:4px;margin:0;background:#edf2e7;padding:4px;border-radius:12px;align-self:start}
+#manual-controls .tool-options button{padding:8px 2px;min-height:44px;font-size:11px;border:0;border-radius:8px}
+#manual-controls .brush-settings{min-width:0}#manual-controls .help{margin:0 0 8px;font-size:11px}
+#manual-controls .range-label{margin:7px 0 2px;font-size:12px}
+#manual-controls input[type=range]{width:100%;min-height:32px;margin:0 0 6px}
+#paint-shape{width:100%;min-height:40px;border:1px solid #dce2d2;border-radius:9px;background:white;color:#405b47;padding:6px;font:inherit;font-size:12px}
+.paint-color-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;margin:8px 0 4px}
+#paint-color{width:48px;height:40px;padding:3px;border:1px solid #dce2d2;border-radius:8px;background:white}
+.paint-swatches{display:flex;flex-wrap:wrap;gap:4px}.paint-swatches button{height:28px;min-width:28px;flex:1;border:3px solid white;border-radius:50%;background:var(--paint);box-shadow:0 0 0 1px #dce2d2}.paint-swatches button[aria-pressed=true]{box-shadow:0 0 0 2px #658461}
+#save-edit{margin-top:12px;position:sticky;bottom:-12px;z-index:3;box-shadow:0 10px 0 10px #fffefb}
+.gif-dialog{max-width:460px;max-height:calc(100svh - 24px);overflow:auto;padding:20px}.gif-dialog h2{font-size:21px}.gif-dialog progress{width:100%;height:9px;accent-color:#52795a}.gif-preview{display:block;width:100%;aspect-ratio:1;border-radius:14px;object-fit:contain;background:#d7e9df}.gif-status{font-size:12px}.gif-actions{display:flex;gap:8px}.gif-actions>*{font-size:13px;padding:11px;min-width:0;margin:0!important}.gif-dialog .help{font-size:12px}
+body.home-preview{background:transparent}body.home-preview .site-header,body.home-preview #toggle-tools,body.home-preview #dropzone,body.home-preview #share,body.home-preview #export-gif,body.home-preview .preview-footer,body.home-preview #tool-panel{display:none!important}
+body.home-preview main{padding:0;max-width:none}body.home-preview .workspace-toolbar{height:50px;margin:0 0 6px;justify-content:center}body.home-preview .play-modes{margin:0}
+body.home-preview .studio{display:block;height:auto}body.home-preview .stage{height:calc(100svh - 56px);min-height:0;max-height:none;border-radius:22px}
+body.home-preview .comfort-chip{top:12px;padding:9px 12px 16px;font-size:11px;min-width:180px}
+@media(max-width:760px){.stage-edit{left:10px;bottom:10px;padding:8px 11px}.stage-edit span{font-size:11px}.canvas-tools{left:8px;top:8px}.canvas-tools .canvas-tool{font-size:11px;min-height:40px}.workspace-toolbar>.secondary{font-size:14px}#manual-controls{grid-template-columns:68px minmax(0,1fr);gap:10px}.control-panel:has([data-panel='2']:not([hidden])) .panel-heading{display:none}}
+.stage canvas{object-fit:fill}.control-panel .steps{grid-template-columns:repeat(4,minmax(0,1fr))}
+.background-actions{display:flex;gap:6px;margin-bottom:12px}.background-actions>*{flex:1;min-width:0;font-size:11px;padding:8px 5px}
+body[data-current-step='5'] .stage{cursor:crosshair}
+body[data-current-step='5'] .control-panel .panel-heading{display:none}
+@media(max-width:360px){.workspace-toolbar .play-modes button{padding:9px 10px}.control-panel .steps button{font-size:10px}}
+.stage-sound{position:absolute;z-index:3;right:10px;top:10px;width:40px;height:40px;border:0;border-radius:50%;background:#ffffffc9;font-size:17px;display:grid;place-items:center}
+.stage-sound:hover{background:white}.home-preview .stage-sound{width:36px;height:36px;right:8px;top:8px;font-size:15px}
+@media(max-width:360px){.comfort-chip{min-width:175px;gap:10px;font-size:11px}.stage-sound{right:6px;top:8px;width:36px;height:36px}}

@@ -1,7 +1,7 @@
 import { validateToolStyle } from './tool-style.js';
-import { ASSETS, COLORS } from './assets.js?v=20261004';
-export const MAX_LINK_DATA = 42000;
-const MAX_JSON = 52000;
+import { ASSETS, COLORS } from './assets.js?v=20261004-comb';
+export const MAX_LINK_DATA = 62000;
+const MAX_JSON = 78000;
 const imagePattern = /^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/;
 export function validateScene(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || value.v !== 1) throw new Error('Link này không đúng định dạng.');
@@ -16,7 +16,9 @@ export function validateScene(value) {
     return number;
   };
   if (!['brush', 'pet'].includes(value.mode) || !Object.hasOwn(COLORS, value.bg) || typeof value.flip !== 'boolean') throw new Error('Chế độ trong link không hợp lệ.');
-  return { v: 1, name: typeof value.name === 'string' ? value.name.slice(0, 30) : 'Bạn nhỏ', cat: image(value.cat, 'cat'), tool: image(value.tool, 'tool'), mode: value.mode, bg: value.bg, size: bounded(value.size, 35, 120), soft: bounded(value.soft, 10, 100), flip: value.flip, ...(value.toolStyle === undefined ? {} : { toolStyle: validateToolStyle(value.toolStyle) }) };
+  if(value.background!==undefined&&(typeof value.background!=='string'||value.background.length>=26000||!imagePattern.test(value.background)))throw new Error('Ảnh nền trong link không hợp lệ.');
+  const subjectScale=value.subjectScale===undefined?{}:{subjectScale:bounded(value.subjectScale,.4,1.6)};
+  return { v: 1, name: typeof value.name === 'string' ? value.name.slice(0, 30) : 'Bạn nhỏ', cat: image(value.cat, 'cat'), tool: image(value.tool, 'tool'), mode: value.mode, bg: value.bg, size: bounded(value.size, 35, 120), soft: bounded(value.soft, 10, 100), flip: value.flip, ...(value.toolStyle === undefined ? {} : { toolStyle: validateToolStyle(value.toolStyle) }),...(value.background===undefined?{}:{background:value.background}),...subjectScale };
 }
 function encode(bytes) { let raw = ''; for (const b of bytes) raw += String.fromCharCode(b); return btoa(raw).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, ''); }
 function decode(text) { if (!/^[A-Za-z0-9_-]+$/.test(text)) throw new Error('Link bị thiếu hoặc hỏng.'); return Uint8Array.from(atob(text.replaceAll('-', '+').replaceAll('_', '/')), x => x.charCodeAt(0)); }
