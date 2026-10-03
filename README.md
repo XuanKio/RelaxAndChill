@@ -1,61 +1,59 @@
-# FunnyProject — Xoa xoa studio
+# RelaxAndChill
 
-Web tạo meme xoa đầu, với luồng bốn bước:
+A small browser playground: brush a real cat, pet an uploaded character, and send a playable scene to a friend.
 
-1. Chọn nhân vật: tải ảnh, chụp bằng camera hoặc dùng mèo mẫu.
-2. Tách nền: tự động cho nền ít màu, chọn một vùng màu, hoặc dùng cọ xóa/khôi phục.
-3. Chọn tay: tay từ trái, tay từ phải, hoặc tải ảnh bàn tay PNG/WEBP riêng.
-4. Xoa đầu: giữ và rê chuột/ngón tay; phím cách và nút Xoa thử cũng dùng được.
+**Play:** https://xuankio.github.io/RelaxAndChill/
 
-## Chạy trên máy
+## Run locally
 
-Cần Node.js 20 trở lên. Không cần cài thư viện.
+Node.js 20+:
 
-```powershell
-cd D:\FunnyProject
+```sh
 npm run dev
 ```
 
-Mở http://127.0.0.1:8765. Máy ảnh yêu cầu người dùng cấp quyền. Trên trình duyệt không hỗ trợ camera, ứng dụng chuyển sang trình chọn/chụp ảnh của thiết bị.
+Open http://127.0.0.1:8765/. Runtime assets are vendored, so npm installation is not required just to run or test. `npm ci` is only needed when updating the pinned ONNX Runtime dependency.
 
-```powershell
+```sh
 npm run check
+npm run check:assets
 npm test
 ```
 
-## Tách nền nhẹ tự viết
+## One canvas for play and editing
 
-`dist/background.js` là thuật toán xử lý màu, **không phải model AI được huấn luyện**. Nó tìm màu phổ biến ở viền ảnh, rồi xóa những điểm ảnh cùng màu có kết nối với viền. Chế độ chạm chọn màu chỉ xóa vùng liên thông với điểm được chọn.
+1. Choose **Chơi ngay** or **Tự tạo**. The same workspace supports both playing and editing.
+2. Use the circular ↑ on the photo to upload JPG/PNG/WebP up to 20 MB. Camera and sample live under **Chỉnh sửa → Ảnh → Tùy chọn ảnh**.
+3. Open **Chỉnh sửa → Tách nền**. Hold a subject for 550 ms, or use **✦ Tách** in the photo corner. **Cọ sửa** opens erase/restore/keep-region and brush size. Undo remains available.
+4. **Tay / lược** selects direction or a custom transparent tool. Extra settings include size, softness and background. Close the panel to play immediately; no forced sequence and no navigation away from the canvas.
+5. **Gửi bạn** copies a playable scene. Drag with mouse/finger, or hold Space on the focused canvas to play. On phones, the contextual panel sits below the canvas to keep both reachable.
 
-- Chạy trong Web Worker, không tải model và không gửi ảnh lên máy chủ.
-- Phù hợp nền trắng hoặc nền gần đồng màu. Nền phức tạp, chủ thể cùng màu với nền và tóc/lông cần chỉnh bằng cọ.
-- Có cọ xóa, cọ khôi phục, giữ vùng chữ nhật và tối đa 6 lần hoàn tác.
-- Ảnh được giảm xuống cạnh dài tối đa 1200 px để giới hạn bộ nhớ trên điện thoại. Bàn tay riêng giới hạn 1000 px.
-- Tạm dừng xử lý tự động sau 15 giây; người dùng có thể hủy và tiếp tục bằng cọ.
+## Background removal
 
-## Cấu trúc
+- U²-NetP, pretrained open source salient-object segmentation, runs through ONNX Runtime Web in a cancellable worker. The 4.57 MB model and approximately 14.3 MB WASM runtime load only when automatic cutout is used. Photos stay on the device.
+- Pressing a subject retains its connected predicted region. A button run keeps all predicted foreground. This is not Apple's model and cannot guarantee perfect separation of touching objects, hair or low-contrast edges.
+- Simple color flood fill remains under **Nền đơn sắc**. Manual erase, restore, rectangular keep and six undo checkpoints remain available.
+- No new training on 1,000 photos was performed. We applied existing pretrained work as requested; a credible fine-tune needs licensed image/mask pairs and a separate held-out evaluation. See [model decision](docs/background-model.md).
 
-```text
-dist/                  Website tĩnh, cũng là mã nguồn dùng trực tiếp
-  app.js               Luồng bốn bước, canvas, cọ, camera, tương tác xoa
-  background.js        Thuật toán tách nền thuần JavaScript
-  background-worker.js Xử lý ảnh ngoài luồng giao diện
-  index.html           Nội dung và điều khiển
-  style.css            Bố cục laptop/điện thoại
-scripts/               Máy chủ local và kiểm tra cú pháp/tài nguyên
-tests/                 Kiểm tra thuật toán tách nền
-```
+## Share links and privacy
 
-## Phát triển và triển khai
+Built-in scenes have short links. Custom cutouts are resized to at most 256 px and encoded as WebP in the URL fragment; they are not uploaded to a server. Anyone with the link can view that image. Custom links can be long, and some messaging apps truncate them. The recipient needs a current browser supporting gzip streams for compressed links. Invalid, oversized and unsupported payloads are rejected.
 
-Repo chính: `git@github.com:XuanKio/FunnyProject.git`. Các mốc được commit và push riêng trên `main`; không force-push.
+## Project structure
 
-Thư mục `dist/` có thể đưa lên hosting tĩnh có HTTPS. Bản Sites hiện tại được cập nhật từ thư mục này; credential triển khai không lưu trong repo. Không tự động triển khai sau mỗi lần push GitHub.
+- `dist/index.html`, `style.css`, `play.js`: compact menu and preset entry.
+- `dist/create.html`, `editor.css`, `app.js`: unified player, side tools, camera and canvas editing.
+- `dist/grooming.js`: time-based interaction simulation, independent of rendering.
+- `dist/share.js`: versioned, bounded scene schema and encoding.
+- `dist/assets.js`: stable asset keys and normalized tool contact points.
+- `dist/subject-worker.js`, `segmentation.js`: model inference and selected-region mask.
+- `dist/background.js`: lightweight connected-color removal.
+- `.agents/skills/relax-and-chill-assets` and `relax-and-chill-ui`: reusable photo-asset and UI workflows.
 
-Không có API key, analytics, tải model, font hay thư viện bên ngoài ở runtime. Dữ liệu chỉnh ảnh chỉ tồn tại trong bộ nhớ trang và sẽ mất khi tải lại. Hai ảnh mẫu đã được tạo bằng công cụ tạo ảnh trong phiên phát triển đầu tiên.
+Only `dist/` is published by GitHub Actions. Pushes to `main` run checks/tests and deploy to GitHub Pages. No user uploads, keys or training images belong in the repository.
 
-## Kiểm tra
+## Credits
 
-`npm test` kiểm tra xóa nền viền, giữ chi tiết cùng màu nhưng nằm bên trong chủ thể, xóa vùng liên thông theo điểm chọn, ảnh trong suốt, ảnh rộng một pixel và đầu vào không hợp lệ. `npm run check` kiểm tra cú pháp JavaScript và tài nguyên HTML cục bộ.
+All active cat, brush and hand assets are real photographs. See [credits](dist/credits.html) and [sources, licenses and changes](dist/assets-provenance.md). Image licenses apply independently to each asset and its adaptations. No reference-game artwork or code was copied.
 
-Giao diện dùng Pointer Events cho chuột/ngón tay, điều khiển bàn phím, trạng thái tiến độ, nhãn truy cập và chế độ giảm chuyển động. Thiết kế responsive ở 390 px và 1366 px; camera cần kiểm tra trên thiết bị có camera thực tế.
+U²-Net by Xuebin Qin and collaborators (Apache-2.0), ONNX weights distributed by rembg; ONNX Runtime by Microsoft (MIT). License texts ship beside their vendored artifacts. Background preprocessing follows the documented U²-NetP normalization used by rembg; see the model decision for sources and checksum.

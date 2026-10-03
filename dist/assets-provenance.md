@@ -1,0 +1,41 @@
+# Photo asset provenance
+
+Verified 2026-10-03. All active cat and tool assets come from real photographs; no generative AI imagery is used. Game names are display labels, not the photographed animals' identities.
+
+## Mochi / assets/mochi.png
+
+Original photograph © Marie-Lan Nguyen / Wikimedia Commons, CC BY 2.5; transparent derivative by Tesseractic, CC BY-SA 4.0.
+
+[Original photograph](https://commons.wikimedia.org/wiki/File:Golden_tabby_and_white_kitten_n01.jpg) · [Transparent derivative](https://commons.wikimedia.org/wiki/File:Orange_and_white_tabby_kitten_(no_background).png) · [CC BY 2.5](https://creativecommons.org/licenses/by/2.5/) · [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+
+Changes: Distributed cutout unchanged, 482 × 379. Upstream uploader used remove.bg; the subject is a real photographed cat, not generated art.
+
+## Mướp / cat.png
+
+Photograph by Cassie J, CC BY 2.0; background removal by YukiKoKo, CC BY-SA 4.0.
+
+[Original photograph](https://commons.wikimedia.org/wiki/File:Grey_classic_tabby.jpg) · [Transparent derivative](https://commons.wikimedia.org/wiki/File:DSH_blotched_transparent.png) · [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) · [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+
+Changes: Removed disconnected alpha debris, cropped and added 12 px transparent margin. This modified cutout is distributed under CC BY-SA 4.0.
+
+## Lược chải / assets/brush.png
+
+Hairbrush with metal bristles.jpg by Klaus Post, CC BY 2.0.
+
+[Commons source](https://commons.wikimedia.org/wiki/File:Hairbrush_with_metal_bristles.jpg) · [Original Flickr photo](https://www.flickr.com/photos/klauspost/92782973/) · [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/)
+
+Changes: White background removed with this project's removeConnectedBackground (tolerance 46), mirrored horizontally, cropped, padded by 12 px and converted from JPEG to transparent PNG. Small source shadows remain at the handle edge.
+
+## Bàn tay / hand.png
+
+Right Hand Palm.png by Eyefive45, CC BY-SA 4.0.
+
+[Commons source](https://commons.wikimedia.org/wiki/File:Right_Hand_Palm.png) · [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+
+Changes: Resized to 636 × 1000 before removal; white background removed with removeConnectedBackground (tolerance 27), cropped and padded by 12 px. This modified cutout is distributed under CC BY-SA 4.0.
+
+## Reproduction
+
+Download originals from the linked Commons description pages. Preserve supplied alpha for cat cutouts. Decode brush and hand to RGBA and invoke `dist/background.js` export `removeConnectedBackground` using the stated tolerances. Encode its returned pixels as PNG, crop and pad. Tabby cleanup retains the largest connected alpha component. This is local color flood fill, not a learned model. No generation or subject repainting.
+
+CC BY-SA terms apply to the indicated image adaptations. Credits do not imply endorsement by the photographers.

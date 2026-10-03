@@ -1,50 +1,60 @@
 import { alphaBounds } from './background.js';
+import { ASSETS, COLORS, PRESETS } from './assets.js';
+import { smallImage, packScene, unpackScene, sceneURL, validateScene } from './share.js';
+import { createGrooming, tickGrooming, springFactor } from './grooming.js';
+let grooming = createGrooming(), travel = 0, keyboard = false, smooth = {x:470,y:270}, particles = [], lastParticle = 0;
 const $ = id => document.getElementById(id);
 const canvas = $('canvas'), ctx = canvas.getContext('2d'), SIDE = 900;
-const state = { step: 1, reached: 1, original: null, image: null, bounds: null, hand: null, defaultHand: null, flip: false, method: 'auto', tool: 'erase', history: [], busy: false, count: 0, selection: null, sampling: false };
+const state = { mode: 'brush', bg: 'mint', catKey: 'cat.tabby', toolKey: 'tool.brush', step: 1, reached: 1, original: null, image: null, bounds: null, hand: null, defaultHand: null, flip: false, method: 'auto', tool: 'erase', history: [], busy: false, count: 0, selection: null, sampling: false };
+let holdTimer = null, holdPoint = null, lastPanel = 1;
 let dirty = true, drawing = false, pressed = false, pointerId = null, lastPoint = null, pointer = { x: 470, y: 270 }, energy = 0, phase = 0, autoUntil = 0, worker = null, workerTimer = null, loadSequence = 0;
 const makeCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const clone = c => { const n = makeCanvas(c.width, c.height); n.getContext('2d').drawImage(c, 0, 0); return n; };
 const notify = message => { $('status').textContent = message; };
 const imageData = () => state.image.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, state.image.width, state.image.height);
-function measure() { if (!state.image) return; const data = imageData(); state.bounds = alphaBounds(data.data, data.width, data.height); dirty = true; updateButtons(); }
-function checkpoint() { state.history.push(imageData()); if (state.history.length > 6) state.history.shift(); $('undo').disabled = false; }
-function updateButtons() { $('next').disabled = state.busy || !state.image || !state.bounds; $('undo').disabled = state.busy || !state.history.length; document.querySelectorAll('.steps button').forEach(b => b.disabled = state.busy || Number(b.dataset.step) > state.reached); }
+function measure() { if (!state.image) return; const data = imageData(); state.hitPixels = data.data; state.bounds = alphaBounds(data.data, data.width, data.height); dirty = true; updateButtons(); }
+function checkpoint() { state.catKey = null; state.history.push(imageData()); if (state.history.length > 6) state.history.shift(); $('undo').disabled = false; }
+function updateButtons() {
+  $('undo').disabled=state.busy||!state.history.length;
+  for(const id of ['toggle-tools','close-tools','resume-play','share','lift'])$(id).disabled=state.busy||!state.image;
+  document.querySelectorAll('.steps button').forEach(b=>b.disabled=state.busy);
+}
 function fit() {
   if (!state.image) return null;
   const editing = state.step === 2;
   const source = editing ? { x: 0, y: 0, width: state.image.width, height: state.image.height } : state.bounds;
   if (!source) return null;
-  const scale = Math.min((editing ? 820 : 640) / source.width, (editing ? 820 : 630) / source.height);
+  const scale = Math.min((editing ? 820 : 760) / source.width, (editing ? 820 : 700) / source.height);
   const w = source.width * scale, h = source.height * scale;
-  return { x: (SIDE - w) / 2, y: editing ? (SIDE - h) / 2 : 775 - h, w, h, scale, source };
+  return { x: (SIDE - w) / 2, y: editing ? (SIDE - h) / 2 : (SIDE - h) / 2 + 25, w, h, scale, source };
 }
 function point(event) { const r = canvas.getBoundingClientRect(), size = Math.min(r.width, r.height); return { x: (event.clientX - r.left - (r.width - size) / 2) * SIDE / size, y: (event.clientY - r.top - (r.height - size) / 2) * SIDE / size }; }
 function toImage(p) { const f = fit(); if (!f) return null; const x = (p.x - f.x) / f.scale + f.source.x, y = (p.y - f.y) / f.scale + f.source.y; return { x, y, inside: x >= 0 && y >= 0 && x < state.image.width && y < state.image.height }; }
-function release() { drawing = false; pressed = false; pointerId = null; lastPoint = null; $('brush-cursor').hidden = true; if (state.image) measure(); }
-const titles = ['Chọn nhân vật', 'Giữ đúng chủ thể', 'Chọn một bàn tay', 'Xoa đầu thôi nào'];
-const descriptions = ['Một chiếc mèo, bạn thân, hoặc chính bạn.', 'Tự động với nền đơn giản, hoặc tự sửa bằng cọ.', 'Tay quen thuộc hay một bàn tay của riêng bạn?', 'Mọi thứ đã sẵn sàng để được cưng chiều.'];
-const hints = ['Chọn ảnh riêng hoặc tiếp tục với mèo mẫu.', 'Phần ô vuông là nền trong suốt.', 'Bàn tay sẽ đi theo chuột hoặc ngón tay ở bước tiếp theo.', 'Giữ & rê để xoa · Phím cách cũng xoa được.'];
+function release() { keyboard=false;travel=0; clearTimeout(holdTimer); holdTimer = null; holdPoint = null; $('stage').classList.remove('holding'); drawing = false; pressed = false; pointerId = null; lastPoint = null; $('brush-cursor').hidden = true; if (state.image) measure(); }
+const titles = ['Chọn nhân vật', 'Nhấc chủ thể', 'Chọn cách chơi'];
+const descriptions = ['Ảnh của bạn, góc chill của bạn.', 'Giữ lên chủ thể để tách nền.', 'Thêm một chút cá tính.'];
+const hints = ['Ảnh chỉ xử lý trên thiết bị.', 'Giữ vào giữa chủ thể khoảng nửa giây.', 'Sẵn sàng để chill.'];
 function go(step, announce = true) {
-  if (state.busy || step < 1 || step > 4) return false;
-  if (step > 1 && !state.image) { notify('Chọn một ảnh trước nhé.'); return false; }
-  if (step > 2 && !state.bounds) { notify('Ảnh đã bị xóa hết. Hãy hoàn tác hoặc khôi phục trước.'); return false; }
-  release(); state.step = step; state.reached = Math.max(state.reached, step); state.selection = null; state.sampling = false; autoUntil = 0; energy = 0;
-  document.body.dataset.currentStep = step;
-  document.querySelectorAll('[data-panel]').forEach(p => p.hidden = Number(p.dataset.panel) !== step);
-  document.querySelectorAll('[data-step]').forEach(b => { const n = Number(b.dataset.step); if (n === step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); b.classList.toggle('complete', n < step); });
-  $('panel-title').textContent = titles[step - 1]; $('panel-description').textContent = descriptions[step - 1]; $('step-kicker').textContent = `BƯỚC 0${step} / 04`; $('hint').textContent = hints[step - 1]; $('preview-label').textContent = ['NHÂN VẬT CỦA BẠN', 'CHỈNH SỬA CHỦ THỂ', 'BÀN TAY CỦA BẠN', 'SÂN KHẤU XOA XOA'][step - 1];
-  $('stage').classList.toggle('editing', step === 2); $('back').hidden = step === 1; $('next').hidden = step === 4; $('counter').hidden = step !== 4; $('next').textContent = ['Tiếp: tách nền', 'Tiếp: chọn bàn tay', 'Bắt đầu xoa đầu'][step - 1] || '';
-  if (announce) notify(`Bước ${step}/4 · ${titles[step - 1]}.`);
-  updateButtons(); dirty = true; return true;
+  if(state.busy||step<1||step>4)return false;
+  release();particles=[];if(step!==4)lastPanel=step;state.step=step;state.selection=null;state.sampling=false;energy=0;
+  document.body.dataset.currentStep=step;document.body.classList.toggle('tools-open',step!==4);
+  $('tool-panel').hidden=step===4;$('toggle-tools').setAttribute('aria-expanded',String(step!==4));
+  document.querySelector('.canvas-tools').hidden=step!==2;
+  document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=Number(p.dataset.panel)!==step);
+  document.querySelectorAll('[data-step]').forEach(b=>{if(Number(b.dataset.step)===step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
+  $('panel-title').textContent=titles[step-1]||'Góc chill';$('panel-description').textContent=descriptions[step-1]||'';
+  $('hint').textContent=step===4?'Giữ & rê nhẹ · hoặc giữ phím cách':hints[step-1];
+  $('preview-label').textContent=step===4?'':step===2?'CHỈNH SỬA CHỦ THỂ':'NHÂN VẬT CỦA BẠN';
+  canvas.setAttribute('aria-label',step===4?'Giữ và rê trên nhân vật để chơi, hoặc giữ phím cách.':'Ảnh chỉnh sửa. Giữ chủ thể để tách nền, hoặc chọn cọ và vẽ.');$('stage').classList.toggle('editing',step===2);$('comfort-chip').hidden=step!==4;$('counter').hidden=step!==4;
+  if(announce)notify('');updateButtons();dirty=true;return true;
 }
-$('next').onclick = () => go(state.step + 1); $('back').onclick = () => go(state.step - 1); $('restart').onclick = () => go(1);
-document.querySelectorAll('[data-step]').forEach(b => b.onclick = () => go(Number(b.dataset.step)));
+$('toggle-tools').onclick=()=>go(state.step===4?lastPanel:4);$('close-tools').onclick=$('resume-play').onclick=()=>go(4);
+document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.step)));
 async function loadImage(url) { const img = new Image(); img.src = url; await img.decode(); return img; }
-function setImage(img, name) {
+function setImage(img, name) { state.catKey = null;
   cancelWorker(false); const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
   state.original = makeCanvas(Math.round(img.width * scale), Math.round(img.height * scale)); state.original.getContext('2d').drawImage(img, 0, 0, state.original.width, state.original.height);
-  state.image = clone(state.original); state.history = []; state.count = 0; state.reached = 1; $('counter').textContent = '0 cái xoa'; $('image-name').textContent = name; $('empty').hidden = true; measure(); go(1, false); notify('Ảnh đã sẵn sàng. Tiếp tục để chọn cách tách nền.');
+  state.image = clone(state.original); state.history = []; state.count = 0; state.reached = 1; $('counter').textContent = '0 cái xoa'; $('image-name').textContent = name; $('empty').hidden = true; measure(); go(1, false); grooming=createGrooming(state.mode);particles=[];notify('Ảnh đã sẵn sàng.');
 }
 async function readFile(file, isHand = false) {
   if (!file || state.busy) return;
@@ -57,7 +67,7 @@ async function readFile(file, isHand = false) {
     if (img.width * img.height > 40000000) { notify('Ảnh quá lớn. Giảm xuống dưới 40 megapixel rồi thử lại.'); return; }
     if (isHand) {
       const scale = Math.min(1, 1000 / Math.max(img.width, img.height)); const hand = makeCanvas(Math.round(img.width * scale), Math.round(img.height * scale)); hand.getContext('2d').drawImage(img, 0, 0, hand.width, hand.height);
-      state.hand = hand; state.flip = false; document.querySelectorAll('[data-hand]').forEach(b => b.setAttribute('aria-pressed', 'false')); $('hand-note').textContent = `Đang dùng: ${file.name}`; dirty = true; notify('Đã chọn bàn tay riêng.');
+      state.hand = hand; state.toolKey = null; state.flip = false; document.querySelectorAll('[data-hand]').forEach(b => b.setAttribute('aria-pressed', 'false')); $('hand-note').textContent = `Đang dùng: ${file.name}`; dirty = true; notify('Đã chọn bàn tay riêng.');
     } else setImage(img, file.name);
   } catch { notify('Không đọc được ảnh. Hãy thử một ảnh khác.'); } finally { URL.revokeObjectURL(url); }
 }
@@ -66,17 +76,17 @@ $('hand-file').onchange = e => { readFile(e.target.files[0], true); e.target.val
 for (const [label, input] of [['dropzone', 'file'], ['hand-upload', 'hand-file']]) $(label).onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(input).click(); } };
 for (const name of ['dragenter', 'dragover']) $('dropzone').addEventListener(name, e => { e.preventDefault(); $('dropzone').classList.add('drag'); });
 for (const name of ['dragleave', 'drop']) $('dropzone').addEventListener(name, e => { e.preventDefault(); $('dropzone').classList.remove('drag'); if (name === 'drop') readFile(e.dataTransfer.files[0]); });
-async function demo() { if (state.busy) return; const sequence = ++loadSequence; try { const img = await loadImage('cat.png'); if (sequence !== loadSequence) return; setImage(img, 'Mèo mẫu'); notify('Mèo mẫu đã trong suốt. Có thể đi tiếp mà không cần xóa nền.'); } catch { $('empty').hidden = true === !!state.image; notify('Không tải được mèo mẫu. Hãy chọn ảnh của bạn.'); } }
+async function demo() { if (state.busy) return; const sequence = ++loadSequence; try { const img = await loadImage('cat.png'); if (sequence !== loadSequence) return; setImage(img, 'Mèo mẫu'); state.catKey = 'cat.tabby'; notify('Mèo mẫu đã tách nền.'); } catch { $('empty').hidden = true === !!state.image; notify('Không tải được mèo mẫu. Hãy chọn ảnh của bạn.'); } }
 $('demo').onclick = demo;
 function setMethod(method) {
-  release(); state.method = method; state.sampling = false; state.selection = null; $('auto-controls').hidden = method !== 'auto'; $('manual-controls').hidden = method !== 'manual';
-  document.querySelectorAll('[data-method]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.method === method))); $('hint').textContent = method === 'manual' ? 'Vẽ trực tiếp lên ảnh để xóa hoặc khôi phục.' : 'Xóa nền tự động, hoặc chạm vào vùng màu muốn bỏ.'; dirty = true;
+  if(state.busy)return;release(); state.method = method; state.sampling = false; state.selection = null; $('auto-controls').hidden = method !== 'auto'; $('manual-controls').hidden = method !== 'manual';
+  document.querySelectorAll('[data-method]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.method === method))); $('hint').textContent = method === 'manual' ? 'Vẽ để xóa hoặc khôi phục.' : 'Giữ vào giữa chủ thể khoảng nửa giây.'; dirty = true;
 }
 document.querySelectorAll('[data-method]').forEach(b => b.onclick = () => setMethod(b.dataset.method));
 document.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => {
-  state.tool = b.dataset.tool; state.selection = null; document.querySelectorAll('[data-tool]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); $('keep-selection').hidden = state.tool !== 'select'; $('tool-help').textContent = { erase: 'Giữ và kéo trên phần ảnh muốn xóa. Dùng Khôi phục nếu lỡ tay.', restore: 'Tô để lấy lại phần đã xóa từ ảnh ban đầu.', select: 'Kéo một khung quanh chủ thể, rồi bấm Giữ vùng đã khoanh. Có thể hoàn tác.' }[state.tool]; dirty = true;
+  state.tool = b.dataset.tool; state.selection = null; document.querySelectorAll('[data-tool]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); $('keep-selection').hidden = state.tool !== 'select'; $('tool-help').textContent = { erase: 'Vẽ lên phần muốn xóa.', restore: 'Tô để lấy lại phần đã xóa.', select: 'Khoanh phần muốn giữ.' }[state.tool]; dirty = true;
 });
-function setBusy(value) { state.busy = value; $('busy-overlay').hidden = !value; $('remove').disabled = value; $('restore-all').disabled = value; $('back').disabled = value; $('sample').disabled = value; updateButtons(); }
+function setBusy(value) { state.busy = value; $('busy-overlay').hidden = !value; $('remove').disabled = value; $('restore-all').disabled = value;  $('sample').disabled = value; updateButtons(); }
 function cancelWorker(message = true) { worker?.terminate(); worker = null; clearTimeout(workerTimer); setBusy(false); if (message) notify('Đã hủy tách nền. Ảnh chưa thay đổi.'); }
 $('cancel-auto').onclick = () => cancelWorker();
 function removeBackground(seed = null) {
@@ -116,14 +126,15 @@ canvas.onpointerdown = e => {
   const p = point(e), v = toImage(p); if (!v) return;
   if (state.step === 2) {
     if (state.sampling) { if (v.inside) { state.sampling = false; removeBackground({ x: Math.floor(v.x), y: Math.floor(v.y) }); } return; }
-    if (state.method !== 'manual') return;
+    if (state.method !== 'manual') { if (!v.inside) return; e.preventDefault(); pointerId = e.pointerId; canvas.setPointerCapture(e.pointerId); holdPoint = p; $('stage').classList.add('holding'); holdTimer = setTimeout(() => { release(); liftSubject({ x: Math.floor(v.x), y: Math.floor(v.y) }); }, 550); return; }
     if (!v.inside && state.tool !== 'select') return;
     drawing = true; if (state.tool === 'select') state.selection = { a: p, b: p }; else { checkpoint(); brush(p); }
-  } else if (state.step === 4) { pressed = true; energy = .75; state.count++; $('counter').textContent = state.count + ' cái xoa'; } else return;
+  } else if (state.step === 4) { pressed = true; smooth={...p}; } else return;
   e.preventDefault(); pointerId = e.pointerId; canvas.setPointerCapture(e.pointerId); canvas.focus({ preventScroll: true }); pointer = p; lastPoint = p; dirty = true;
 };
 canvas.onpointermove = e => {
   const p = point(e);
+  if (holdPoint && Math.hypot(p.x-holdPoint.x,p.y-holdPoint.y)>25) release();
   if (state.step === 2 && state.method === 'manual' && state.tool !== 'select' && e.pointerType !== 'touch') {
     const r = canvas.getBoundingClientRect(), size = Math.min(r.width, r.height); const cursor = $('brush-cursor'); cursor.hidden = false; cursor.style.left = (e.clientX - r.left) + 'px'; cursor.style.top = (e.clientY - r.top) + 'px'; cursor.style.width = cursor.style.height = Number($('brush').value) * 2 * size / SIDE + 'px';
   }
@@ -131,52 +142,92 @@ canvas.onpointermove = e => {
   if (drawing) {
     if (state.tool === 'select') { state.selection.b = p; dirty = true; }
     else { const distance = Math.hypot(p.x - lastPoint.x, p.y - lastPoint.y); const n = Math.max(1, Math.ceil(distance / Math.max(2, Number($('brush').value) / 3))); for (let i = 1; i <= n; i++) brush({ x: lastPoint.x + (p.x - lastPoint.x) * i / n, y: lastPoint.y + (p.y - lastPoint.y) * i / n }); }
-  } else if (pressed) energy = Math.min(1, energy + Math.hypot(p.x - pointer.x, p.y - pointer.y) * .013);
+  } else if (pressed && isContact(p) && isContact(pointer)) travel += Math.hypot(p.x-pointer.x,p.y-pointer.y)/SIDE;
   pointer = p; lastPoint = p; dirty = true;
 };
 for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(event, e => { if (e.pointerId === pointerId) release(); });
 canvas.onpointerleave = () => $('brush-cursor').hidden = true; window.addEventListener('blur', release);
-function pet() { if (!state.bounds || state.step !== 4 || state.busy) return false; autoUntil = performance.now() + 1600; state.count++; $('counter').textContent = state.count + ' cái xoa'; dirty = true; return true; }
-$('pet').onclick = pet; canvas.onkeydown = e => { if (e.code === 'Space' && state.step === 4) { e.preventDefault(); if (!e.repeat) pet(); } };
+canvas.onkeydown=e=>{if(e.code!=='Space')return;e.preventDefault();if(state.step===2&&state.method==='auto'&&!e.repeat)liftSubject();else if(state.step===4&&!state.busy&&!$('share-dialog').open){keyboard=true;pressed=true;}};
+window.addEventListener('keyup',e=>{if(e.code==='Space')release();});document.addEventListener('visibilitychange',release);
 for (const [input, output, suffix] of [['tolerance', 'tolerance-value', ''], ['brush', 'brush-value', ' px'], ['hand-size', 'hand-size-value', '%'], ['soft', 'soft-value', '%']]) $(input).oninput = () => { $(output).textContent = $(input).value + suffix; dirty = true; };
-document.querySelectorAll('[data-hand]').forEach(b => b.onclick = () => { state.hand = state.defaultHand; state.flip = b.dataset.hand === 'flipped'; document.querySelectorAll('[data-hand]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); $('hand-note').textContent = 'Đã chọn: ' + (state.flip ? 'Tay bên kia.' : 'Tay quen thuộc.'); dirty = true; });
-document.querySelectorAll('[data-bg]').forEach(b => b.onclick = () => { $('stage').style.backgroundColor = b.dataset.bg; $('stage').style.color = b.dataset.bg === '#282c28' ? '#f4ffe2' : '#29351e'; document.querySelectorAll('[data-bg]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
-let lastFrame = 0;
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-function frame(t) {
-  const dt = Math.min((t - lastFrame) / 16.667 || 1, 3); lastFrame = t; const auto = state.step === 4 && t < autoUntil;
-  if (document.hidden) { requestAnimationFrame(frame); return; }
-  if (dirty || energy > .002 || auto) {
-    ctx.clearRect(0, 0, SIDE, SIDE); const f = fit();
-    if (f) {
-      if (auto) { pointer = { x: 470 + Math.sin(t * .011) * 90, y: f.y + 65 }; energy = .85; }
-      phase += .22 * dt; energy *= Math.pow(pressed ? .97 : .87, dt);
-      ctx.save();
-      if (state.step === 4) { const squash = energy * Number($('soft').value) / 100 * (.12 + .08 * Math.abs(Math.sin(phase))) * (reducedMotion ? .45 : 1); ctx.translate(450, 775); ctx.transform(1 + squash * .5, 0, Math.sin(phase) * energy * .022, 1 - squash, 0, 0); ctx.drawImage(state.image, f.source.x, f.source.y, f.source.width, f.source.height, f.x - 450, f.y - 775, f.w, f.h); }
-      else ctx.drawImage(state.image, f.source.x, f.source.y, f.source.width, f.source.height, f.x, f.y, f.w, f.h);
-      ctx.restore();
-      if (state.step === 2 && state.selection) { const { a, b } = state.selection; ctx.strokeStyle = '#7752d8'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y); ctx.setLineDash([]); ctx.fillStyle = '#7851dc22'; ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y); }
-      if (state.step >= 3 && state.hand) {
-        const w = Number($('hand-size').value) * 5.5, h = w * state.hand.height / state.hand.width;
-        const x = (pressed || auto) && state.step === 4 ? pointer.x : 485, y = (pressed || auto) && state.step === 4 ? pointer.y : f.y + 45;
-        ctx.save(); ctx.translate(x, y + Math.sin(phase) * energy * 12); ctx.rotate(-.04 + Math.sin(phase) * energy * .04); if (state.flip) ctx.scale(-1, 1); ctx.drawImage(state.hand, -w * .78, -h * .85, w, h); ctx.restore();
-      }
-    }
-    dirty = false;
-  }
-  requestAnimationFrame(frame);
+async function selectMode(mode) {
+  if (state.busy) return; release();energy=0;state.mode = mode; grooming=createGrooming(mode);state.toolKey = mode === 'brush' ? 'tool.brush' : 'tool.hand';
+  const key = state.toolKey;
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed',String(b.dataset.mode === mode)));
+  document.querySelectorAll('.hand-thumb img').forEach(img => img.src = ASSETS[key].src);
+  try { const img = await loadImage(ASSETS[key].src); if(state.toolKey !== key)return; state.hand = state.defaultHand = img; dirty = true; } catch { notify('Không tải được dụng cụ. Thử lại nhé.'); }
+}
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => selectMode(b.dataset.mode));
+document.querySelectorAll('[data-hand]').forEach(b => b.onclick = () => { if(state.busy)return; state.flip = b.dataset.hand === 'flipped'; document.querySelectorAll('[data-hand]').forEach(x => x.setAttribute('aria-pressed',String(x===b))); dirty = true; });
+document.querySelectorAll('[data-bg]').forEach(b => b.onclick = () => { state.bg=b.dataset.bg; $('stage').style.backgroundColor=COLORS[state.bg]; document.querySelectorAll('[data-bg]').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); });
+function currentScene() {
+ return {v:1,name:$('scene-name').value.trim()||'Bạn nhỏ',cat:state.catKey||smallImage(state.image,state.bounds),tool:state.toolKey||smallImage(state.hand),mode:state.mode,bg:state.bg,size:Number($('hand-size').value),soft:Number($('soft').value),flip:state.flip};
+}
+$('share').onclick=async()=>{
+ if(state.busy||!state.bounds||!state.hand)return;release();$('share').disabled=true;
+ try{$('share-url').value=sceneURL(await packScene(currentScene()));$('share-status').textContent=state.catKey?'Link mở chiếc mèo và thiết lập hiện tại.':'Ảnh thu nhỏ nằm trong link; một số ứng dụng giới hạn độ dài.';$('native-share').hidden=!navigator.share;$('share-dialog').showModal();}catch(error){notify(error.message);}finally{$('share').disabled=false;}
+};
+$('copy-link').onclick=async()=>{try{await navigator.clipboard.writeText($('share-url').value);$('share-status').textContent='Đã sao chép. Gửi cho một người bạn nhé!';}catch{$('share-url').focus();$('share-url').select();$('share-status').textContent='Chạm giữ hoặc Ctrl+C để sao chép.';}};
+$('native-share').onclick=async()=>{try{await navigator.share({title:'Một chút RelaxAndChill',url:$('share-url').value});}catch(error){if(error.name!=='AbortError')$('share-status').textContent='Hãy dùng nút sao chép link.';}};
+$('share-dialog').addEventListener('close',release);
+function liftSubject(seed = null) {
+  if(!state.image || state.busy)return;
+  const data=imageData(); setBusy(true);notify('Lần đầu cần tải bộ tách nền. Ảnh vẫn ở trên thiết bị.');
+  try {
+    worker=new Worker(new URL('./subject-worker.js',import.meta.url),{type:'module'});
+    workerTimer=setTimeout(()=>{cancelWorker(false);notify('Chưa xử lý kịp. Bạn có thể thử lại hoặc dùng cọ sửa.');},60000);
+    worker.onmessage=({data:result})=>{
+      if(result.status){notify(result.status);return;}
+      cancelWorker(false);if(result.error){notify(result.error);return;}
+      const output=new ImageData(new Uint8ClampedArray(result.buffer),result.width,result.height);
+      if(!alphaBounds(output.data,output.width,output.height)){notify('Chưa thấy chủ thể. Thử giữ giữa vật hoặc dùng cọ sửa.');return;}
+      checkpoint();state.image.getContext('2d').putImageData(output,0,0);measure();
+      $('stage').classList.add('lifted');setTimeout(()=>$('stage').classList.remove('lifted'),750);notify('Đã tách nền.');
+    };
+    worker.onerror=()=>{cancelWorker(false);notify('Không chạy được tách nền. Bạn vẫn có thể dùng cọ sửa.');};
+    worker.postMessage({buffer:data.data.buffer,width:data.width,height:data.height,seed},[data.data.buffer]);
+  }catch{cancelWorker(false);notify('Trình duyệt chưa hỗ trợ. Hãy dùng cọ sửa.');}
+}
+$('lift').onclick=()=>{setMethod('auto');liftSubject();};
+let lastFrame=0;
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function isContact(p){const f=fit();if(!f||!state.image)return false;const x=Math.floor((p.x-f.x)/f.scale+f.source.x),y=Math.floor((p.y-f.y)/f.scale+f.source.y);if(x<0||y<0||x>=state.image.width||y>=state.image.height)return false;return state.hitPixels?.[(y*state.image.width+x)*4+3]>40;}
+function frame(t){
+ const dt=Math.min(.05,(t-lastFrame)/1000||.016);lastFrame=t;
+ if(!document.hidden&&!$('share-dialog').open&&(dirty||state.step===4)){
+  ctx.clearRect(0,0,SIDE,SIDE);const f=fit();
+  if(f){
+   if(state.step===4&&!state.busy){
+    if(keyboard){const p={x:450+Math.sin(t*.0028)*f.w*.22,y:f.y+f.h*.48};if(isContact(p)&&isContact(pointer))travel+=Math.hypot(p.x-pointer.x,p.y-pointer.y)/SIDE;pointer=p;}
+    const distance=travel;travel=0;const contact=isContact(pointer);grooming=tickGrooming(grooming,{dt,distance,contact,active:pressed});
+    const desired=pressed&&contact?Math.min(1,distance/dt*2):0;energy+=(desired-energy)*springFactor(dt,10);smooth.x+=(pointer.x-smooth.x)*springFactor(dt,22);smooth.y+=(pointer.y-smooth.y)*springFactor(dt,22);
+    const squash=reducedMotion?0:energy*Number($('soft').value)/100*(state.mode==='pet'?.13:.035),breathe=reducedMotion?0:Math.sin(t*.0017)*.005;
+    ctx.save();ctx.translate(450,f.y+f.h);ctx.transform(1+squash*.35,0,reducedMotion?0:Math.sin(t*.007)*energy*.012,1-squash+breathe,0,0);ctx.drawImage(state.image,f.source.x,f.source.y,f.source.width,f.source.height,f.x-450,-f.h,f.w,f.h);ctx.restore();
+    if(!reducedMotion&&desired>.1&&t-lastParticle>110&&particles.length<25){particles.push({x:smooth.x,y:smooth.y,vx:(Math.random()-.5)*45,life:1});lastParticle=t;}
+    $('comfort').value=grooming.comfort;$('comfort-value').textContent=Math.floor(grooming.comfort)+'%';$('mood').textContent={ready:grooming.comfort>40?'Thư giãn quá ♡':grooming.comfort>0?'Rừ rừ…':'Đang đợi bạn',gentle:'Rừ rừ…',fast:'Nhẹ hơn chút nha',happy:'Mê lắm rồi ♡'}[grooming.reaction];$('counter').textContent=grooming.strokes+(state.mode==='brush'?' lượt chải':' cái xoa');$('reward').hidden=!grooming.completed;
+   }else{ctx.drawImage(state.image,f.source.x,f.source.y,f.source.width,f.source.height,f.x,f.y,f.w,f.h);$('reward').hidden=true;}
+   for(const p of particles){p.life-=dt*1.5;p.x+=p.vx*dt;p.y-=45*dt;ctx.globalAlpha=Math.max(0,p.life)*.8;ctx.fillStyle='#fffef1';ctx.font='24px Segoe UI';ctx.fillText(state.mode==='pet'?'♡':'✧',p.x,p.y);}particles=particles.filter(p=>p.life>0);ctx.globalAlpha=1;
+   if(state.step===2&&state.selection){const{a,b}=state.selection;ctx.strokeStyle='#7752d8';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);ctx.setLineDash([]);ctx.fillStyle='#7851dc22';ctx.fillRect(a.x,a.y,b.x-a.x,b.y-a.y);}
+   if(state.step>=3&&state.hand){const w=Number($('hand-size').value)*(state.mode==='brush'?3.2:4.0),h=w*state.hand.height/state.hand.width;const p=state.step===4?smooth:{x:470,y:f.y+f.h*.3};ctx.save();ctx.translate(p.x,p.y);ctx.rotate(reducedMotion?0:Math.sin(t*.006)*energy*.06);if(state.flip)ctx.scale(-1,1);const anchor=ASSETS[state.toolKey]?.contact||[.5,.5];ctx.drawImage(state.hand,-w*anchor[0],-h*anchor[1],w,h);ctx.restore();}
+  }dirty=false;
+ }requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-loadImage('hand.png').then(img => { state.hand = state.defaultHand = img; dirty = true; }).catch(() => notify('Không tải được bàn tay mẫu. Bạn có thể chọn ảnh bàn tay riêng ở bước 3.'));
-go(1, false); demo();
+async function boot(){
+ try{
+  let scene=location.hash.startsWith('#play=')?await unpackScene(location.hash.slice(6)):PRESETS[location.hash.slice(8)]||PRESETS.mochi;scene=validateScene(scene);
+  const img=await loadImage(ASSETS[scene.cat]?.src||scene.cat);setImage(img,scene.name);state.catKey=ASSETS[scene.cat]?scene.cat:null;$('scene-name').value=scene.name;
+  await selectMode(scene.mode);if(!ASSETS[scene.tool]){state.hand=await loadImage(scene.tool);state.toolKey=null;}else{state.hand=await loadImage(ASSETS[scene.tool].src);state.toolKey=scene.tool;}
+  state.flip=scene.flip;state.bg=scene.bg;$('stage').style.backgroundColor=COLORS[scene.bg];$('hand-size').value=scene.size;$('soft').value=scene.soft;$('hand-size-value').textContent=scene.size+'%';$('soft-value').textContent=scene.soft+'%';
+  document.querySelectorAll('[data-hand]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.hand==='flipped')===state.flip)));document.querySelectorAll('[data-bg]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bg===state.bg)));
+  go(new URLSearchParams(location.search).has('edit')?1:4,false);notify('');
+ }catch{history.replaceState(null,'',location.pathname+'?edit');await demo();await selectMode('brush');notify('Link bị thiếu hoặc hỏng. Bạn có thể chọn lại ảnh.');}
+}
+boot();
+window.addEventListener('hashchange',()=>{if(!state.busy)boot();});
 const cameraDialog = document.createElement('dialog'); cameraDialog.className = 'camera-dialog'; cameraDialog.setAttribute('aria-label', 'Chụp ảnh chủ thể'); cameraDialog.innerHTML = '<h2>Chụp nhân vật của bạn</h2><video autoplay playsinline muted></video><p role="status">Đang mở máy ảnh…</p><div class="row"><button class="secondary" data-close>Đóng</button><button class="primary" data-snap disabled>Chụp ảnh</button></div>'; document.body.append(cameraDialog);
 let stream = null, cameraSession = 0; const video = cameraDialog.querySelector('video'), cameraStatus = cameraDialog.querySelector('p'), snap = cameraDialog.querySelector('[data-snap]');
 function closeCamera() { cameraSession++; stream?.getTracks().forEach(t => t.stop()); stream = null; video.srcObject = null; cameraDialog.close(); }
 cameraDialog.querySelector('[data-close]').onclick = closeCamera; cameraDialog.addEventListener('cancel', e => { e.preventDefault(); closeCamera(); }); window.addEventListener('pagehide', () => { closeCamera(); cancelWorker(false); });
 $('camera').onclick = async () => { if (state.busy) return; if (!navigator.mediaDevices?.getUserMedia) { $('capture').click(); return; } const session = ++cameraSession; cameraDialog.showModal(); snap.disabled = true; cameraStatus.textContent = 'Cho phép dùng máy ảnh để chụp. Ảnh chỉ xử lý trên thiết bị.'; try { const next = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false }); if (session !== cameraSession) { next.getTracks().forEach(t => t.stop()); return; } stream = next; video.srcObject = stream; await video.play(); snap.disabled = false; cameraStatus.textContent = 'Đưa chủ thể vào khung hình, rồi bấm Chụp ảnh.'; } catch { cameraStatus.textContent = 'Không mở được máy ảnh. Kiểm tra quyền truy cập hoặc đóng và chọn ảnh có sẵn.'; } };
 snap.onclick = () => { if (!video.videoWidth) return; const photo = makeCanvas(video.videoWidth, video.videoHeight); photo.getContext('2d').drawImage(video, 0, 0); closeCamera(); ++loadSequence; setImage(photo, 'Ảnh vừa chụp'); };
-const modelContext = document.modelContext;
-if (modelContext?.registerTool) {
-  const tool = { name: 'pet_image', description: 'Start a short petting animation when the studio is on step 4 with an image ready.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: false }, execute(input) { if (!input || typeof input !== 'object' || Object.keys(input).length) throw new Error('Expected an empty object'); if (!pet()) throw new Error('Complete the studio setup and open step 4 first'); return { started: true, pets: state.count }; } };
-  try { Promise.resolve(modelContext.registerTool(tool)).catch(() => {}); } catch { /* Optional browser capability. */ }
-}

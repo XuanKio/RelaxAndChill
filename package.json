@@ -1,13 +1,19 @@
 {
-  "name": "funny-project",
-  "version": "0.2.0",
+  "name": "relax-and-chill",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "A local-first, four-step petting meme studio.",
+  "description": "Photo-based cat grooming, petting and a private browser scene creator.",
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "check": "node scripts/check.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "check:assets": "node scripts/check-assets.mjs"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "onnxruntime-web": "1.30.0"
+  }
 }
