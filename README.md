@@ -25,7 +25,7 @@ npm test
 1. Choose **Chơi ngay** or **Tự tạo**. The same workspace supports both playing and editing.
 2. Use the circular ↑ on the photo to upload JPG/PNG/WebP up to 20 MB. Camera and sample live under **Chỉnh sửa → Ảnh → Tùy chọn ảnh**.
 3. Open **Chỉnh sửa → Tách nền**. Hold a subject for 550 ms, or use **✦ Tách** in the photo corner. **Cọ sửa** opens erase/restore/keep-region and brush size. Undo remains available.
-4. **Tay / lược** selects direction or a custom transparent tool. Extra settings include size, softness and background. Close the panel to play immediately; no forced sequence and no navigation away from the canvas.
+4. **Tay / lược → Tùy chỉnh thêm** accepts JPG/PNG/WebP tools. Custom tools have their own automatic cutout, erase/restore brush, six undo checkpoints and original-image reset. Rotation (±180°), hue (±30°), saturation (60–140%) and brightness (80–120%) are non-destructive; reset restores neutral angle/color. Each play mode keeps its tool edits during the session. Extra settings include size, softness and background. Close the panel to play immediately; no forced sequence and no navigation away from the canvas.
 5. **Gửi bạn** copies a playable scene. Drag with mouse/finger, or hold Space on the focused canvas to play. On phones, the contextual panel sits below the canvas to keep both reachable.
 
 ## Background removal
@@ -37,7 +37,7 @@ npm test
 
 ## Share links and privacy
 
-Built-in scenes have short links. Custom cutouts are resized to at most 256 px and encoded as WebP in the URL fragment; they are not uploaded to a server. Anyone with the link can view that image. Custom links can be long, and some messaging apps truncate them. The recipient needs a current browser supporting gzip streams for compressed links. Invalid, oversized and unsupported payloads are rejected.
+Tool cutouts and angle/color settings survive sharing. Legacy links without tool appearance settings keep their original defaults. Built-in scenes have short links. Custom cutouts are resized to at most 256 px and encoded as WebP in the URL fragment; they are not uploaded to a server. Anyone with the link can view that image. Custom links can be long, and some messaging apps truncate them. The recipient needs a current browser supporting gzip streams for compressed links. Invalid, oversized and unsupported payloads are rejected.
 
 ## Project structure
 
