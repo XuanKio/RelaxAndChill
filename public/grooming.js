@@ -1,12 +1,21 @@
 export function createGrooming(mode = 'brush') {
-  return { mode, comfort: 0, strokes: 0, travel: 0, reaction: 'ready', completed: false };
+  return { mode, comfort: 0, strokes: 0, travel: 0, idle: 0, reaction: 'ready', completed: false };
 }
 
 /** Distance is in playfield widths; score only deliberate contact motion. */
 export function tickGrooming(previous, { dt, distance = 0, contact = false, active = false }) {
   if (!Number.isFinite(dt) || dt <= 0 || !Number.isFinite(distance) || distance < 0) return { ...previous };
   const next = { ...previous }, elapsed = Math.min(dt, 0.1);
-  if (!active || !contact || distance < 0.0001) { next.reaction = previous.completed ? 'happy' : 'ready'; return next; }
+  if (previous.completed) return next;
+  if (!active || !contact || distance < 0.0001) {
+    const idle = previous.idle || 0;
+    next.idle = idle + elapsed;
+    const decayTime = Math.max(0, next.idle - 1) - Math.max(0, idle - 1);
+    next.comfort = Math.max(0, previous.comfort - decayTime * 12);
+    next.reaction = 'ready';
+    return next;
+  }
+  next.idle = 0;
   const speed = distance / elapsed;
   const travel = Math.min(distance, elapsed * 1.8);
   next.travel += travel;

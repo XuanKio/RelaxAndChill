@@ -1,6 +1,6 @@
 import { GIFEncoder, quantize, applyPalette } from './vendor/gifenc.esm.js';
 import { GIF_SIZE, GIF_FRAMES, GIF_DELAY, gifPose, gifMoment } from './gif-motion.js';
-import { drawScooterRide } from './dash.js';
+import { drawFarewell } from './farewell.js';
 import { drawFur } from './fur.js?v=20261004';
 import { isolateHandFrames } from './hand-frames.js';
 import { coverRect } from './scene-layout.js';
@@ -18,7 +18,7 @@ self.onmessage = ({data:s}) => {
       c.setTransform(GIF_SIZE/900,0,0,GIF_SIZE/900,0,0);c.fillStyle=s.background;c.fillRect(0,0,900,900);
       if(s.backdrop){const bg=coverRect(s.backdrop.width,s.backdrop.height,900,900);c.drawImage(s.backdrop,bg.x,bg.y,bg.w,bg.h);}
       if(moment.stage==='ride'){
-        drawScooterRide(c,{age:moment.age,reduced:false,image:s.image,bounds:b,fit:{x,y,w,h},scooter:s.scooter,viewWidth:900});
+        drawFarewell(c,{type:s.farewell,skate:s.skate,explosion:s.explosion,age:moment.age,reduced:false,image:s.image,bounds:b,fit:{x,y,w,h},scooter:s.scooter,viewWidth:900});
       }else{
       c.save();c.translate(450,y+h);c.scale(1+pose.squash*.35,1-pose.squash);
       c.drawImage(s.image,b.x,b.y,b.width,b.height,x-450,-h,w,h);c.restore();
@@ -47,5 +47,5 @@ self.onmessage = ({data:s}) => {
     }
     gif.finish();const bytes=gif.bytes();self.postMessage({buffer:bytes.buffer},[bytes.buffer]);
   } catch(error) { self.postMessage({error:error.message}); }
-  finally { s.image?.close();s.hand?.close();s.sprite?.close();s.backdrop?.close();s.scooter?.close(); }
+  finally { s.image?.close();s.hand?.close();s.sprite?.close();s.backdrop?.close();s.scooter?.close();s.skate?.close();s.explosion?.close(); }
 };

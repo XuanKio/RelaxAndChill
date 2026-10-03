@@ -48,7 +48,7 @@ export async function unpackScene(text) {
   else throw new Error('Phiên bản link không được hỗ trợ.');
   return validateScene(JSON.parse(content));
 }
-export function sceneURL(packed) { const url = new URL('./create.html', location.href); url.hash = 'play=' + packed; return url.href; }
+export function sceneURL(packed) { const url = new URL('p/', document.baseURI); url.hash = 'play=' + packed; return url.href; }
 
 /** Export a bounded raster copy. Never upload private images to the repository. */
 export function smallImage(source, bounds = null, maxSide = 256) {

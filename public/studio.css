@@ -80,3 +80,21 @@ body:is([data-current-step='2'],[data-current-step='5']) .panel-heading{display:
  body.tools-open.tool-settings-open main{height:100svh}
 }
 .tool-settings-open .panel-footer{display:none}
+
+.share-link-field{display:flex;align-items:center;gap:9px;background:#f3f6ed;border:1px solid #e2e9d9;border-radius:12px;padding:10px 12px;margin-bottom:10px}.share-link-field img{flex:none}.share-link-field #share-url{min-width:0;flex:1;border:0;background:transparent;margin:0;padding:4px 0;color:#4e6d58;font-size:12px;outline-offset:2px}
+.play-only #toggle-tools,.play-only #tool-panel,.play-only .canvas-tools{display:none!important}
+main[data-play-only="true"] #toggle-tools,main[data-play-only="true"] #tool-panel{display:none!important}
+.create-own{position:absolute;z-index:8;bottom:22px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:13px;box-shadow:0 6px 20px #254c3920;animation:chill-appear .35s ease-out}
+.create-own[hidden]{display:none}
+@keyframes chill-appear{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+@media(prefers-reduced-motion:reduce){.create-own{animation:none}}
+
+/* A dedicated close cell cannot overlap the section tabs. */
+.panel-topbar{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-bottom:12px}
+body.tools-open .control-panel .panel-topbar>.steps{position:static;flex:1;min-width:0;margin:0;padding:4px;box-shadow:none}
+body.tools-open .control-panel .panel-topbar>.close-tools{position:static;order:2;width:34px;height:40px;flex:0 0 34px;display:grid;place-items:center;padding:0;border-radius:12px;background:#f0f4ec;line-height:1;color:#587562}
+body.tools-open #toggle-tools{display:none}
+body.tool-settings-open .panel-topbar{display:none}
+#share-link[aria-busy=true]{opacity:.65;cursor:wait}
+
+.gif-heading-actions{display:flex;align-items:center;gap:6px}.gif-heading-actions .icon-button{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:12px;background:#edf2e5;color:#41694f}.gif-heading-actions [data-roll]:disabled{opacity:.35}

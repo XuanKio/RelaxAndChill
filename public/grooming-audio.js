@@ -10,7 +10,7 @@ export function createGroomingAudio(button) {
   }
   function stop(){for(const audio of Object.values(tracks)){audio.pause();audio.volume=0;}for(const node of engineNodes){try{node.stop();}catch{}node.disconnect();}engineNodes=[];}
   function sync(){button.textContent=enabled?'🔊':'🔇';button.setAttribute('aria-pressed',String(enabled));button.setAttribute('aria-label',enabled?'Tắt âm thanh':'Bật âm thanh');}
-  function prime(mode){if(!enabled)return;stop();const AudioContext=window.AudioContext||window.webkitAudioContext;if(AudioContext){context ||= new AudioContext();context.resume().catch(()=>{});}const audio=tracks[mode];audio.volume=0;audio.play().catch(()=>{});}
+  function prime(mode){if(!enabled)return;stop();const AudioContext=window.AudioContext||window.webkitAudioContext;if(AudioContext){context ||= new AudioContext();context.resume().catch(()=>{});}for(const key of mode==='brush'?['brush','pet']:['pet']){const audio=tracks[key];audio.volume=0;audio.play().catch(()=>{});}}
   button.onclick=()=>{enabled=!enabled;stop();try{localStorage.setItem('chill-sound',enabled?'on':'off');}catch{}sync();};
   sync();
   return {prime,stop,engine(){
@@ -20,7 +20,9 @@ export function createGroomingAudio(button) {
     filter.type='lowpass';filter.frequency.value=650;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.065,now+.06);gain.gain.setValueAtTime(.065,now+.65);gain.gain.exponentialRampToValueAtTime(.001,now+1.25);
     osc.connect(filter);filter.connect(gain);gain.connect(context.destination);osc.start();osc.stop(now+1.3);engineNodes=[osc];osc.onended=()=>{osc.disconnect();filter.disconnect();gain.disconnect();};
   },tick(mode,active,comfort,dt){
-    const audio=tracks[mode],target=enabled&&active?(mode==='brush'?.25:.16+comfort/100*.2):0;
-    audio.volume+=(target-audio.volume)*(1-Math.exp(-dt*12));
+    for(const [key,audio] of Object.entries(tracks)){
+      const target=enabled&&active?(key==='pet'?.16+comfort/100*.2:mode==='brush'?.18:0):0;
+      audio.volume+=(target-audio.volume)*(1-Math.exp(-dt*12));
+    }
   }};
 }

@@ -1,3 +1,4 @@
+import { shareURL, readSceneHash } from './short-links.js?v=short-links';
 import { DEFAULT_TOOL_STYLE, tintPixels, validateToolStyle } from './tool-style.js';
 import { paintStamp } from './paint.js';
 import { draftStore } from './draft.js';
@@ -5,23 +6,33 @@ import QRCode from './vendor/qrcode.esm.js';
 import { createGifExport } from './gif-export.js';
 import { isolateHandFrames } from './hand-frames.js';
 import { coverRect, stageSize } from './scene-layout.js';
-import { createGroomingAudio } from './grooming-audio.js';
-import { dashPose, drawDashSmoke, drawScooterRide, DASH_DURATION } from './dash.js';
+import { createGroomingAudio } from './grooming-audio.js?v=purr-both';
+import { dashPose, drawDashSmoke, DASH_DURATION } from './dash.js';
+import { chooseFarewell, drawFarewell } from './farewell.js';
 import { createToolCutout } from './tool-cutout.js';
 import { alphaBounds } from './background.js';
 import { ASSETS, COLORS, PRESETS } from './assets.js?v=20261004-comb105';
 import { smallImage, packScene, unpackScene, sceneURL, validateScene } from './share.js?v=20261004-background';
-import { createGrooming, tickGrooming, springFactor } from './grooming.js';
+import { createGrooming, tickGrooming, springFactor } from './grooming.js?v=decay';
 import { sampleCoat, furCount, makeFur, advanceFur, drawFur } from './fur.js?v=20261004';
 let styledHand = null, styledSprite = null, styledFrames = [], toolLoadSequence = 0;
 const modeTools = new Map();
 let handSprite = null, furCarry = 0, petCycle = 0;
 let grooming = createGrooming(), travel = 0, keyboard = false, smooth = {x:470,y:270}, particles = [], lastParticle = 0;
 const $ = id => document.getElementById(id);
+const sharedHash = /^#(?:play=|mochi(?:\?|$)|muop(?:\?|$)|s=)/.test(location.hash);
+const playOnly = document.querySelector('[data-play-only="true"]') !== null || sharedHash;
+const createMode = !playOnly && !new URLSearchParams(location.search).has('home');
+document.body.classList.toggle('play-only',playOnly);
+if (/\/create\.html$/.test(location.pathname)) {
+  const clean = new URL(playOnly ? 'p/' : 'create/',document.baseURI);
+  if(new URLSearchParams(location.search).has('home'))clean.search='home';
+  clean.hash=location.hash;history.replaceState(null,'',clean);
+}
 const homePreview = new URLSearchParams(location.search).has('home');
 document.body.classList.toggle('home-preview',homePreview);
 const sounds=createGroomingAudio($('toggle-sound'));
-let dashAge=-1,engineFired=false,scooter=null;
+let dashAge=-1,engineFired=false,scooter=null,skate=null,explosion=null,farewell=null,lastGifEnding=null;
 const canvas = $('canvas'), ctx = canvas.getContext('2d'), SIDE = 900;
 const state = { mode: 'brush', bg: 'mint', catKey: 'cat.tabby', toolKey: 'tool.brush', step: 1, reached: 1, original: null, image: null, bounds: null, hand: null, handOriginal: null, toolStyle: {...DEFAULT_TOOL_STYLE,rotation:105}, defaultHand: null, flip: false, method: 'auto', tool: 'erase', history: [], busy: false, count: 0, selection: null, sampling: false };
 Object.assign(state,{background:null,bgOriginal:null,bgHistory:[],subjectScale:1});
@@ -56,7 +67,7 @@ const titles = ['Chọn nhân vật', 'Tách nền & vẽ', 'Chọn dụng cụ'
 const descriptions = ['Ảnh của bạn, góc chill của bạn.', 'Giữ lên chủ thể để tách nền.', 'Thêm một chút cá tính.'];
 const hints = ['Ảnh chỉ xử lý trên thiết bị.', 'Giữ vào giữa chủ thể khoảng nửa giây.', 'Sẵn sàng để chill.'];
 function go(step, announce = true) {
-  if(state.busy||step<1||step>5)return false;
+  if(state.busy||step<1||step>5||(playOnly&&step!==4))return false;
   setToolSettings(false);
   if(dashAge>=0){dashAge=-1;grooming=createGrooming(state.mode);}
   release();particles=[];if(step!==4)lastPanel=step;state.step=step;state.selection=null;state.sampling=false;energy=0;
@@ -91,6 +102,8 @@ $('open-tool-settings').onclick=()=>setToolSettings(true,true);
 $('back-tool-picker').onclick=()=>setToolSettings(false,true);
 $('tool-panel').addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('tool-settings-open')){e.preventDefault();setToolSettings(false,true);}});
 async function loadImage(url) { const img = new Image(); img.src = url; await img.decode(); return img; }
+loadImage('assets/explosion.jpg').then(img=>{explosion=img;}).catch(()=>{});
+loadImage('assets/skateboard.png').then(img=>{skate=img;}).catch(()=>{});
 loadImage('assets/sh-scooter.png').then(img=>{scooter=img;}).catch(()=>{});
 function ensureBackground(){if(!state.background){const r=$('stage').getBoundingClientRect(),s=Math.min(1,1200/Math.max(r.width,r.height));state.background=makeCanvas(Math.max(1,Math.round(r.width*s)),Math.max(1,Math.round(r.height*s)));state.bgOriginal=clone(state.background);}}
 function backgroundFit(){return coverRect(state.background.width,state.background.height,canvas.width,canvas.height);}
@@ -109,7 +122,7 @@ function setImage(img, name) { state.catKey = null;
   state.image = clone(state.original); state.history = []; state.count = 0; state.reached = 1; $('counter').textContent = '0 cái xoa'; $('image-name').textContent = name; $('empty').hidden = true; measure(); go(1, false); grooming=createGrooming(state.mode);particles=[];notify('Ảnh đã sẵn sàng.');
 }
 async function readFile(file, isHand = false) {
-  if (!file || state.busy) return;
+  if (!file || state.busy || playOnly) return;
   const valid = /^image\/(jpeg|png|webp)$/;
   if (!valid.test(file.type)) { notify('Hãy chọn ảnh JPG, PNG hoặc WEBP.'); return; }
   if (file.size > 20 * 1024 * 1024) { notify('Ảnh quá lớn. Chọn ảnh dưới 20 MB.'); return; }
@@ -259,28 +272,29 @@ const gifExport=createGifExport(async()=>{
   if(!state.bounds||!state.hand)throw new Error('Chưa có ảnh.');
   const b=state.bounds,anchor=ASSETS[state.toolKey]?.contact||[.5,.5];
   const images=await Promise.all([createImageBitmap(state.image),createImageBitmap(styledHand||state.hand),state.toolKey==='tool.hand'&&handSprite?createImageBitmap(styledSprite||handSprite):null]);
-  return {image:images[0],hand:images[1],sprite:images[2],scooter:await createImageBitmap(scooter||await loadImage('assets/sh-scooter.png')),backdrop:state.background?await createImageBitmap(state.background):null,bounds:{...b},subjectScale:state.subjectScale,background:COLORS[state.bg],mode:state.mode,size:Number($('hand-size').value),soft:Number($('soft').value),flip:state.flip,rotation:(ASSETS[state.toolKey]?.rotation||0)+state.toolStyle.rotation*Math.PI/180,anchor,coat:sampleCoat(state.hitPixels,state.image.width,state.image.height,b.x+b.width*.5,b.y+b.height*.35)};
+  lastGifEnding=chooseFarewell(lastGifEnding||farewell);
+  return {farewell:lastGifEnding,explosion:await createImageBitmap(explosion||await loadImage('assets/explosion.jpg')),skate:await createImageBitmap(skate||await loadImage('assets/skateboard.png')),image:images[0],hand:images[1],sprite:images[2],scooter:await createImageBitmap(scooter||await loadImage('assets/sh-scooter.png')),backdrop:state.background?await createImageBitmap(state.background):null,bounds:{...b},subjectScale:state.subjectScale,background:COLORS[state.bg],mode:state.mode,size:Number($('hand-size').value),soft:Number($('soft').value),flip:state.flip,rotation:(ASSETS[state.toolKey]?.rotation||0)+state.toolStyle.rotation*Math.PI/180,anchor,coat:sampleCoat(state.hitPixels,state.image.width,state.image.height,b.x+b.width*.5,b.y+b.height*.35)};
 },release);
 $('share-gif').onclick=()=>{if(!state.busy){$('share-dialog').close();gifExport.open();}};
 function shareChoice(){ $('share-choices').hidden=false;$('share-link-panel').hidden=true;$('share-heading').textContent='Gửi một chút chill'; }
 $('share').onclick=()=>{if(state.busy||!state.bounds||!state.hand)return;release();shareChoice();$('share-dialog').showModal();$('share').classList.remove('share-ready');};
 $('share-back').onclick=shareChoice;
 $('share-link').onclick=async()=>{
- $('share-link').disabled=true;
+ $('share-link').disabled=true;$('share-link').setAttribute('aria-busy','true');$('share-url').value='';$('share-qr').hidden=true;$('copy-link').disabled=true;$('native-share').hidden=true;
  try{
-  const scene=currentScene(),fullURL=sceneURL(await packScene(scene));let qrURL=fullURL,compact=false;
+  const scene=currentScene(),fullURL=await shareURL(scene);let qrURL=fullURL,compact=false;
   if(qrURL.length>2200){
    for(const size of [96,64,48,32,24]){
     const qrScene={...scene,cat:state.catKey||smallImage(state.image,state.bounds,size),tool:state.toolKey||smallImage(state.hand,null,size),...(state.background?{background:smallImage(state.background,null,size)}:{})};
     qrURL=sceneURL(await packScene(qrScene));compact=true;if(qrURL.length<=2200)break;
    }
   }
-  $('share-url').value=fullURL;$('share-choices').hidden=true;$('share-link-panel').hidden=false;$('share-heading').textContent='Quét để chơi cùng';
+  $('share-url').value=fullURL;$('copy-link').disabled=false;$('share-choices').hidden=true;$('share-link-panel').hidden=false;$('share-heading').textContent='Quét để chơi cùng';
   $('share-qr').hidden=true;
   if(qrURL.length<=2900){$('share-qr').src=await QRCode.toDataURL(qrURL,{width:420,margin:4,errorCorrectionLevel:'L',color:{dark:'#244c3eff',light:'#ffffffff'}});$('share-qr').hidden=false;}
   $('share-status').textContent=qrURL.length>2900?'Ảnh quá chi tiết cho QR. Bạn vẫn có thể sao chép link.':compact?'QR dùng ảnh thu nhỏ. Link giữ ảnh rõ hơn.':'Quét QR hoặc sao chép link.';
   $('native-share').hidden=!navigator.share;
- }catch(error){$('share-status').textContent=error.message;$('share-choices').hidden=true;$('share-link-panel').hidden=false;}finally{$('share-link').disabled=false;}
+ }catch(error){$('share-status').textContent=error.message;$('share-choices').hidden=true;$('share-link-panel').hidden=false;}finally{$('share-link').disabled=false;$('share-link').removeAttribute('aria-busy');}
 };
 $('copy-link').onclick=async()=>{try{await navigator.clipboard.writeText($('share-url').value);$('share-status').textContent='Đã sao chép. Gửi cho một người bạn nhé!';}catch{$('share-url').focus();$('share-url').select();$('share-status').textContent='Chạm giữ hoặc Ctrl+C để sao chép.';}};
 $('native-share').onclick=async()=>{try{await navigator.share({title:'Một chút RelaxAndChill',url:$('share-url').value});}catch(error){if(error.name!=='AbortError')$('share-status').textContent='Hãy dùng nút sao chép link.';}};
@@ -319,13 +333,13 @@ function frame(t){
    if(state.step===4&&!state.busy){
     if(keyboard){const p={x:450+Math.sin(t*.0028)*f.w*.22,y:f.y+f.h*.48};if(isContact(p)&&isContact(pointer))travel+=Math.hypot(p.x-pointer.x,p.y-pointer.y)/SIDE;pointer=p;}
     const distance=travel;travel=0;const contact=isContact(pointer);grooming=tickGrooming(grooming,{dt,distance,contact,active:pressed});
-    if(grooming.completed&&dashAge<0){dashAge=0;engineFired=false;release();particles=[];}
-    if(dashAge>=0){dashAge+=dt;if(dashAge>1.2&&!engineFired){engineFired=true;sounds.engine();}if(dashAge>=DASH_DURATION){dashAge=-1;grooming=createGrooming(state.mode);}}
+    if(grooming.completed&&dashAge<0){farewell=chooseFarewell(farewell);dashAge=0;engineFired=false;release();particles=[];$('stage').dataset.farewell=farewell;$('create-own').hidden=true;}
+    if(dashAge>=0){dashAge+=dt;if(dashAge>1.2&&!engineFired){engineFired=true;if(farewell==='scooter')sounds.engine();}if(dashAge>=DASH_DURATION){dashAge=-1;grooming=createGrooming(state.mode);$('create-own').hidden=false;}}
     sounds.tick(state.mode,pressed&&contact&&distance>.0001&&dashAge<0,grooming.comfort,dt);
     const desired=pressed&&contact?Math.min(1,distance/dt*2):0;energy+=(desired-energy)*springFactor(dt,10);smooth.x+=(pointer.x-smooth.x)*springFactor(dt,22);smooth.y+=(pointer.y-smooth.y)*springFactor(dt,22);
     petCycle += dt * 15 * energy;
     const squash=reducedMotion?0:energy*Number($('soft').value)/100*(state.mode==='pet'?(.06 + .09 * Math.sin((petCycle % 10) / 10 * Math.PI)):.035),breathe=reducedMotion?0:Math.sin(t*.0017)*.005;
-    if(dashAge>=0&&scooter){drawScooterRide(ctx,{age:dashAge,reduced:reducedMotion,image:state.image,bounds:state.bounds,fit:f,scooter,viewWidth:canvas.width});}
+    if(dashAge>=0&&scooter){drawFarewell(ctx,{type:farewell,skate,explosion,viewHeight:canvas.height,age:dashAge,reduced:reducedMotion,image:state.image,bounds:state.bounds,fit:f,scooter,viewWidth:canvas.width});}
     else{
     const dash=dashAge>=0?dashPose(dashAge,reducedMotion):{progress:0,stretch:1,alpha:1};
     ctx.save();ctx.globalAlpha=dash.alpha;ctx.translate(450+(reducedMotion?0:dash.progress*(canvas.width+f.w)),f.y+f.h);ctx.transform((1+squash*.35)*dash.stretch,0,reducedMotion?0:Math.sin(t*.007)*energy*.012,(1-squash+breathe)/dash.stretch,0,0);ctx.drawImage(state.image,f.source.x,f.source.y,f.source.width,f.source.height,f.x-450,-f.h,f.w,f.h);ctx.restore();
@@ -364,21 +378,23 @@ requestAnimationFrame(frame);
 async function boot(){
  try{
   modeTools.clear();state.hand=null;state.handOriginal=null;state.background=null;state.bgOriginal=null;state.bgHistory=[];
-  const saved=!location.hash&&new URLSearchParams(location.search).has('edit')?await draftStore().catch(()=>null):null;
-  let scene=saved?.settings||(location.hash.startsWith('#play=')?await unpackScene(location.hash.slice(6)):PRESETS[location.hash.slice(8)]||PRESETS.mochi);scene=validateScene(scene);state.subjectScale=scene.subjectScale??1;$('subject-size').value=Math.round(state.subjectScale*100);$('subject-size-value').textContent=Math.round(state.subjectScale*100)+'%';
+  $('create-own').hidden=true;
+  const saved=createMode&&!location.hash&&!new URLSearchParams(location.search).has('new')?await draftStore().catch(()=>null):null;
+  if(createMode&&location.search)history.replaceState(null,'',location.pathname+location.hash);
+  let scene=saved?.settings||await readSceneHash(location.hash);scene=validateScene(scene);state.subjectScale=scene.subjectScale??1;$('subject-size').value=Math.round(state.subjectScale*100);$('subject-size-value').textContent=Math.round(state.subjectScale*100)+'%';
   const img=await loadImage(ASSETS[scene.cat]?.src||scene.cat);setImage(img,scene.name);state.catKey=ASSETS[scene.cat]?scene.cat:null;$('scene-name').value=scene.name;
   if(scene.background){state.background=clone(await loadImage(scene.background));state.bgOriginal=clone(state.background);}
   await selectMode(scene.mode);if(!ASSETS[scene.tool]){state.hand=await loadImage(scene.tool);state.toolKey=null;}else{state.hand=await loadImage(ASSETS[scene.tool].src);state.toolKey=scene.tool;}
   state.flip=scene.flip;state.toolStyle=validateToolStyle(scene.toolStyle||defaultToolStyle());state.handOriginal=state.toolKey?null:state.hand;refreshTool();state.bg=scene.bg;$('stage').style.backgroundColor=COLORS[scene.bg];$('hand-size').value=scene.size;$('soft').value=scene.soft;$('hand-size-value').textContent=scene.size+'%';$('soft-value').textContent=scene.soft+'%';
   document.querySelectorAll('[data-hand]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.hand==='flipped')===state.flip)));document.querySelectorAll('[data-bg]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bg===state.bg)));
-  go(new URLSearchParams(location.search).has('edit')?1:4,false);notify('');
+  go(createMode?1:4,false);notify('');
   if(saved){
     const [image,original,hand,handOriginal]=await Promise.all([saved.image,saved.original,saved.hand,saved.handOriginal].map(blob=>createImageBitmap(blob)));
     state.image=clone(image);state.original=clone(original);state.hand=clone(hand);state.handOriginal=clone(handOriginal);[image,original,hand,handOriginal].forEach(img=>img.close());
     state.catKey=saved.catKey;state.toolKey=saved.toolKey;measure();refreshTool();notify('Đã mở bản chỉnh đã lưu trên thiết bị.');
     if(saved.background){const bg=await createImageBitmap(saved.background),original=await createImageBitmap(saved.bgOriginal||saved.background);state.background=clone(bg);state.bgOriginal=clone(original);bg.close();original.close();dirty=true;}
   }
- }catch{history.replaceState(null,'',location.pathname+'?edit');await demo();await selectMode('brush');notify('Link bị thiếu hoặc hỏng. Bạn có thể chọn lại ảnh.');}
+ }catch{await demo();await selectMode('brush');go(playOnly?4:1,false);$('hint').textContent='Link bị thiếu hoặc hỏng. Bạn có thể tạo cảnh riêng.';$('create-own').hidden=false;}
 }
 boot();
 window.addEventListener('hashchange',()=>{if(!state.busy)boot();});

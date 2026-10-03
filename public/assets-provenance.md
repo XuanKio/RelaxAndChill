@@ -56,3 +56,9 @@ CC BY-SA terms apply to the indicated image adaptations. Credits do not imply en
 
 ## Scooter finale
 `assets/sh-scooter.png`: photograph supplied directly by Xuân in the chat attachment `codex-clipboard-ad7f6cdc-b8ba-466e-a44c-41dcb7074c04.png`. The supplied 2363×1575 PNG already contains alpha. Cropped transparent padding and downsampled to 1080×690; no generation or repainting. Used at the user's explicit request. Original photographer/license not provided; no ownership or MIT claim. Engine effect is procedural Web Audio, not a sampled real SH engine.
+
+## Skateboard / assets/skateboard.png
+Generated with the built-in imagegen tool at Xuan's explicit request on 2026-10-04. Prompt: single realistic horizontal black grip-tape skateboard, yellow wheels, transparent background, no cat or text. Trimmed transparent margins and resized to 900 px for runtime. Existing cats are not generated.
+
+## Explosion / assets/explosion.jpg
+Master Sgt. Andrew Moseley, U.S. Air National Guard, public domain (official duties). Source: https://commons.wikimedia.org/wiki/File:177th_EOD_Blows_It_Up_160429-Z-YH452-029_(cropped).jpg . Resized 1873x1182 photograph to 1000px JPEG quality84; no AI generation.

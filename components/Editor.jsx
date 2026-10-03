@@ -2,13 +2,13 @@ import Runtime from './Runtime';
 import RangeControl from './RangeControl';
 import BrushPicker from './BrushPicker';
 
-export default function Editor(){return <>
-<header className="site-header"><a className="brand" href="./"><img src="favicon.svg" width="36" height="36" alt="" /><span>RelaxAndChill</span></a><a className="menu-link" href="./">← Menu</a></header>
-<main>
+export default function Editor({playOnly=false}){return <>
+<header className="site-header"><a className="brand" href="./" aria-label="RelaxAndChill — về trang chủ"><img src="favicon.svg" width="36" height="36" alt="" /><span>RelaxAndChill</span></a></header>
+<main data-play-only={playOnly ? "true" : undefined}>
 <div className="workspace-toolbar"><div className="play-modes" role="group" aria-label="Chế độ chơi"><button data-mode="brush" aria-pressed="true">Chải lông</button><button data-mode="pet" aria-pressed="false">Xoa đầu</button></div>
 </div>
 <div className="studio"><div className="preview-column"><div className="preview-meta"><span id="preview-label">ẢNH CỦA BẠN</span><span id="image-name">Mèo mẫu</span></div>
-<div id="stage" className="stage"><button id="toggle-tools" aria-label="Bật hoặc tắt công cụ chỉnh sửa" className="stage-edit" aria-expanded="false" aria-controls="tool-panel">✎ <span>Chỉnh sửa</span></button><button id="toggle-sound" className="stage-sound" aria-label="Tắt âm thanh" aria-pressed="true">🔊</button><canvas id="canvas" width="900" height="900" tabIndex="0" aria-label="Ảnh xem trước. Ở bước tách nền, giữ và kéo để chỉnh ảnh."></canvas><button id="share" aria-label="Gửi bạn: QR hoặc GIF" title="Gửi bạn" className="share-plane stage-share"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m21 3-7 18-4-7-7-4 18-7ZM10 14 21 3" /></svg></button>
+<div id="stage" className="stage"><a id="create-own" className="create-own primary" href="create/?new" target="_top" hidden>Tạo của riêng bạn <span aria-hidden="true">↗</span></a><button id="toggle-tools" aria-label="Bật hoặc tắt công cụ chỉnh sửa" className="stage-edit" aria-expanded="false" aria-controls="tool-panel">✎ <span>Chỉnh sửa</span></button><button id="toggle-sound" className="stage-sound" aria-label="Tắt âm thanh" aria-pressed="true">🔊</button><canvas id="canvas" width="900" height="900" tabIndex="0" aria-label="Ảnh xem trước. Ở bước tách nền, giữ và kéo để chỉnh ảnh."></canvas><button id="share" aria-label="Gửi bạn: QR hoặc GIF" title="Gửi bạn" className="share-plane stage-share"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m21 3-7 18-4-7-7-4 18-7ZM10 14 21 3" /></svg></button>
 <div className="comfort-chip" id="comfort-chip"><span id="mood">Đang đợi bạn</span><span id="comfort-value">0%</span><progress id="comfort" max="100" value="0" aria-label="Độ thư giãn"></progress></div>
 <span id="reward" hidden>♡ Mê lắm rồi!</span><div id="empty" className="empty" hidden>Chọn một ảnh để bắt đầu</div>
 <div id="busy-overlay" className="busy-overlay" hidden><span className="spinner"></span><span>Đang xử lý…</span><button id="cancel-auto" className="secondary">Hủy</button></div>
@@ -19,7 +19,7 @@ export default function Editor(){return <>
 <div className="preview-footer"><p id="hint">Ảnh chỉ xử lý trên thiết bị.</p><span id="counter" hidden></span></div>
 </div>
 
-<aside className="control-panel" id="tool-panel" hidden><button id="close-tools" className="close-tools" aria-label="Đóng công cụ">×</button><nav className="steps" aria-label="Thanh công cụ"><button data-step="1" aria-current="step">Ảnh</button><button data-step="2">Tách nền</button><button data-step="3">Tay / lược</button><button data-step="5">Nền</button></nav>
+<aside className="control-panel" id="tool-panel" hidden><div className="panel-topbar"><button id="close-tools" className="close-tools" aria-label="Đóng công cụ">×</button><nav className="steps" aria-label="Thanh công cụ"><button data-step="1" aria-current="step">Ảnh</button><button data-step="2">Tách nền</button><button data-step="3">Tay / lược</button><button data-step="5">Nền</button></nav></div>
 
 <div className="panel-body"><div className="panel-heading"><span id="step-kicker" className="eyebrow">BƯỚC 01 / 03</span><h1 id="panel-title">Chọn nhân vật</h1><p id="panel-description">Ảnh của bạn, góc chill của bạn.</p></div>
 
@@ -85,11 +85,11 @@ export default function Editor(){return <>
 <h2 id="share-heading">Gửi một chút chill</h2>
 <div id="share-choices" className="share-choices">
 <button id="share-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h3v3h3v3h-6zM12 3v9H3M12 15v6M18 12h3" /></svg><strong>QR / Link</strong><span>Rủ bạn chơi cùng</span></button>
-<button id="share-gif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="m10 8 6 4-6 4V8Z"/></svg><strong>Tải GIF</strong><span>Cả chuyến đi SH</span></button>
+<button id="share-gif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="m10 8 6 4-6 4V8Z"/></svg><strong>Tải GIF</strong><span>Tạm biệt bất ngờ</span></button>
 </div>
-<div id="share-link-panel" hidden><button id="share-back" className="share-back" aria-label="Quay lại lựa chọn chia sẻ" title="Quay lại">←</button><img id="share-qr" alt="Mã QR mở cảnh chơi của bạn" hidden/><label className="sr-only" htmlFor="share-url">Link chia sẻ</label><input id="share-url" readOnly/><button id="copy-link" className="primary full">Sao chép link</button><button id="native-share" className="text-button full" hidden>Gửi qua ứng dụng</button><p id="share-status" className="small" role="status"></p></div>
-<p className="share-privacy">Ai có QR hoặc link đều xem được ảnh này.</p>
+<div id="share-link-panel" hidden><button id="share-back" className="share-back" aria-label="Quay lại lựa chọn chia sẻ" title="Quay lại">←</button><img id="share-qr" alt="Mã QR mở cảnh chơi của bạn" hidden/><label className="sr-only" htmlFor="share-url">Link chia sẻ</label><div className="share-link-field"><img src="favicon.svg" width="25" height="25" alt=""/><input id="share-url" readOnly/></div><button id="copy-link" className="primary full">Sao chép link</button><button id="native-share" className="text-button full" hidden>Gửi qua ứng dụng</button><p id="share-status" className="small" role="status"></p></div>
+<p className="share-privacy">Tạo QR sẽ lưu cảnh trực tuyến. Ai có link đều chơi được.</p>
 </dialog>
 
-<Runtime src="app.js?v=next-studio" />
+<Runtime src="app.js?v=farewells" />
 </>;}

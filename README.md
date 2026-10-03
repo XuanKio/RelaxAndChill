@@ -27,7 +27,7 @@ npm test
 2. Use **Chỉnh sửa → Ảnh**: the upload and camera icons choose JPG/PNG/WebP up to 20 MB.
 3. Open **Chỉnh sửa → Tách nền**. Hold a subject for 550 ms, or use **✦ Tách** in the photo corner. **Cọ sửa** opens erase/restore/keep-region and brush size. Undo remains available.
 4. **Tay / lược → Tùy chỉnh thêm** accepts JPG/PNG/WebP tools. Custom tools have their own automatic cutout, erase/restore brush, six undo checkpoints and original-image reset. Rotation (±180°), hue (±30°), saturation (60–140%) and brightness (80–120%) are non-destructive; reset restores neutral angle/color. Each play mode keeps its tool edits during the session. Extra settings include size, softness and background. Close the panel to play immediately; no forced sequence and no navigation away from the canvas.
-5. The paper plane inside the scene opens **QR / Link** or **Tải GIF**. GIF exports are 400×400, 8-second silent loops that include grooming, boarding the SH, smoke, and the return. Drag with mouse/finger, or hold Space on the focused canvas to play. On phones, editing keeps the preview above a separately scrolling tool panel, so direction, rotation and color changes remain visible. Tool thumbnails fit their entire image.
+5. The paper plane inside the scene opens **QR / Link** or **Tải GIF**. GIF exports are 400×400, 8-second silent loops that include grooming, one of five random goodbyes (SH, skateboard, shaka, cartoon explosion or waving), and the return. Drag with mouse/finger, or hold Space on the focused canvas to play. On phones, editing keeps the preview above a separately scrolling tool panel, so direction, rotation and color changes remain visible. Tool thumbnails fit their entire image.
 
 ## Background removal
 
@@ -38,7 +38,7 @@ npm test
 
 ## Share links and privacy
 
-Tool cutouts and angle/color settings survive sharing. Legacy links without tool appearance settings keep their original defaults. Built-in scenes have short links. Custom cutouts are resized to at most 256 px and encoded as WebP in the URL fragment; they are not uploaded to a server. Anyone with the link can view that image. Custom links can be long, and some messaging apps truncate them. The recipient needs a current browser supporting gzip streams for compressed links. Invalid, oversized and unsupported payloads are rejected.
+Tool cutouts and angle/color settings survive sharing. Legacy links without tool appearance settings keep their original defaults. Built-in scenes have short links. Custom cutouts are resized to bounded WebP images, then saved to the dedicated Sites R2 service when QR / Link is selected. The GitHub repository never receives visitor photos. Built-in scenes use readable preset hashes; uploaded scenes use 16-character immutable content IDs. Anyone with the link can play. Shared routes hide editing; the completion action starts a separate new scene. Legacy compressed links still open.
 
 ## Project structure
 
@@ -61,4 +61,8 @@ All active cat, brush and hand assets are real photographs. See [credits](public
 
 U²-Net by Xuebin Qin and collaborators (Apache-2.0), ONNX weights distributed by rembg; ONNX Runtime by Microsoft (MIT). License texts ship beside their vendored artifacts. Background preprocessing follows the documented U²-NetP normalization used by rembg; see the model decision for sources and checksum.
 
-QR is generated on-device. Custom photos are reduced further for QR capacity while the copied link retains its larger thumbnail. No image upload backend or newly trained animation model is used.
+QR is generated on-device from the same short URL used by Copy Link. The image service runs separately on Sites/Cloudflare R2; see server/README.md. No animation model was trained. The skateboard is generated at the owner’s explicit request; cat photographs are unchanged.
+
+Progress grows during contact motion in either mode, waits one second when idle, then drains at 12 percentage points per second. Both modes purr; brushing mixes a quieter brushing track. Completion randomly selects a different farewell from the previous one.
+
+The public menu is https://xuankio.github.io/RelaxAndChill/nlinn/ with `/nlinn/create/` and `/nlinn/p/`. The export nests all resources under `out/nlinn/` and leaves legacy redirects at the original paths, preserving query strings and fragments. GIF’s dice icon rerolls to a different ending.
