@@ -2,6 +2,8 @@ import { alphaBounds } from './background.js';
 import { ASSETS, COLORS, PRESETS } from './assets.js';
 import { smallImage, packScene, unpackScene, sceneURL, validateScene } from './share.js';
 import { createGrooming, tickGrooming, springFactor } from './grooming.js';
+import { sampleCoat, furCount, makeFur, advanceFur, drawFur } from './fur.js';
+let handSprite = null, furCarry = 0, petCycle = 0;
 let grooming = createGrooming(), travel = 0, keyboard = false, smooth = {x:470,y:270}, particles = [], lastParticle = 0;
 const $ = id => document.getElementById(id);
 const canvas = $('canvas'), ctx = canvas.getContext('2d'), SIDE = 900;
@@ -30,7 +32,7 @@ function fit() {
 }
 function point(event) { const r = canvas.getBoundingClientRect(), size = Math.min(r.width, r.height); return { x: (event.clientX - r.left - (r.width - size) / 2) * SIDE / size, y: (event.clientY - r.top - (r.height - size) / 2) * SIDE / size }; }
 function toImage(p) { const f = fit(); if (!f) return null; const x = (p.x - f.x) / f.scale + f.source.x, y = (p.y - f.y) / f.scale + f.source.y; return { x, y, inside: x >= 0 && y >= 0 && x < state.image.width && y < state.image.height }; }
-function release() { keyboard=false;travel=0; clearTimeout(holdTimer); holdTimer = null; holdPoint = null; $('stage').classList.remove('holding'); drawing = false; pressed = false; pointerId = null; lastPoint = null; $('brush-cursor').hidden = true; if (state.image) measure(); }
+function release() { keyboard=false;travel=0;furCarry=0; clearTimeout(holdTimer); holdTimer = null; holdPoint = null; $('stage').classList.remove('holding'); drawing = false; pressed = false; pointerId = null; lastPoint = null; $('brush-cursor').hidden = true; if (state.image) measure(); }
 const titles = ['Chọn nhân vật', 'Nhấc chủ thể', 'Chọn cách chơi'];
 const descriptions = ['Ảnh của bạn, góc chill của bạn.', 'Giữ lên chủ thể để tách nền.', 'Thêm một chút cá tính.'];
 const hints = ['Ảnh chỉ xử lý trên thiết bị.', 'Giữ vào giữa chủ thể khoảng nửa giây.', 'Sẵn sàng để chill.'];
@@ -151,11 +153,11 @@ canvas.onkeydown=e=>{if(e.code!=='Space')return;e.preventDefault();if(state.step
 window.addEventListener('keyup',e=>{if(e.code==='Space')release();});document.addEventListener('visibilitychange',release);
 for (const [input, output, suffix] of [['tolerance', 'tolerance-value', ''], ['brush', 'brush-value', ' px'], ['hand-size', 'hand-size-value', '%'], ['soft', 'soft-value', '%']]) $(input).oninput = () => { $(output).textContent = $(input).value + suffix; dirty = true; };
 async function selectMode(mode) {
-  if (state.busy) return; release();energy=0;state.mode = mode; grooming=createGrooming(mode);state.toolKey = mode === 'brush' ? 'tool.brush' : 'tool.hand';
+  if (state.busy) return; release();energy=0;particles=[];petCycle=0;state.mode = mode; grooming=createGrooming(mode);state.toolKey = mode === 'brush' ? 'tool.brush' : 'tool.hand';
   const key = state.toolKey;
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed',String(b.dataset.mode === mode)));
   document.querySelectorAll('.hand-thumb img').forEach(img => img.src = ASSETS[key].src);
-  try { const img = await loadImage(ASSETS[key].src); if(state.toolKey !== key)return; state.hand = state.defaultHand = img; dirty = true; } catch { notify('Không tải được dụng cụ. Thử lại nhé.'); }
+  try { const img = await loadImage(ASSETS[key].src); if(key === 'tool.hand' && !handSprite)handSprite = await loadImage(ASSETS[key].sprite); if(state.toolKey !== key)return; state.hand = state.defaultHand = img; dirty = true; } catch { notify('Không tải được dụng cụ. Thử lại nhé.'); }
 }
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => selectMode(b.dataset.mode));
 document.querySelectorAll('[data-hand]').forEach(b => b.onclick = () => { if(state.busy)return; state.flip = b.dataset.hand === 'flipped'; document.querySelectorAll('[data-hand]').forEach(x => x.setAttribute('aria-pressed',String(x===b))); dirty = true; });
@@ -201,14 +203,35 @@ function frame(t){
     if(keyboard){const p={x:450+Math.sin(t*.0028)*f.w*.22,y:f.y+f.h*.48};if(isContact(p)&&isContact(pointer))travel+=Math.hypot(p.x-pointer.x,p.y-pointer.y)/SIDE;pointer=p;}
     const distance=travel;travel=0;const contact=isContact(pointer);grooming=tickGrooming(grooming,{dt,distance,contact,active:pressed});
     const desired=pressed&&contact?Math.min(1,distance/dt*2):0;energy+=(desired-energy)*springFactor(dt,10);smooth.x+=(pointer.x-smooth.x)*springFactor(dt,22);smooth.y+=(pointer.y-smooth.y)*springFactor(dt,22);
-    const squash=reducedMotion?0:energy*Number($('soft').value)/100*(state.mode==='pet'?.13:.035),breathe=reducedMotion?0:Math.sin(t*.0017)*.005;
+    petCycle += dt * 15 * energy;
+    const squash=reducedMotion?0:energy*Number($('soft').value)/100*(state.mode==='pet'?(.06 + .09 * Math.sin((petCycle % 10) / 10 * Math.PI)):.035),breathe=reducedMotion?0:Math.sin(t*.0017)*.005;
     ctx.save();ctx.translate(450,f.y+f.h);ctx.transform(1+squash*.35,0,reducedMotion?0:Math.sin(t*.007)*energy*.012,1-squash+breathe,0,0);ctx.drawImage(state.image,f.source.x,f.source.y,f.source.width,f.source.height,f.x-450,-f.h,f.w,f.h);ctx.restore();
-    if(!reducedMotion&&desired>.1&&t-lastParticle>110&&particles.length<25){particles.push({x:smooth.x,y:smooth.y,vx:(Math.random()-.5)*45,life:1});lastParticle=t;}
+    if(!reducedMotion && state.mode==='brush'){
+     const emission=furCount(furCarry,distance,pressed,contact,Math.max(0,80-particles.length));furCarry=emission.carry;
+     for(let i=0;i<emission.count;i++){
+      const position={x:pointer.x+(Math.random()-.5)*22,y:pointer.y+(Math.random()-.5)*16};
+      const source=toImage(position),color=sampleCoat(state.hitPixels,state.image.width,state.image.height,source.x,source.y);
+      if(color)particles.push(makeFur(position.x,position.y,color,Math.sign(pointer.x-smooth.x)));
+     }
+    }else if(!reducedMotion&&desired>.1&&t-lastParticle>180&&particles.length<25){particles.push({kind:'heart',x:smooth.x,y:smooth.y,vx:(Math.random()-.5)*45,life:1});lastParticle=t;}
     $('comfort').value=grooming.comfort;$('comfort-value').textContent=Math.floor(grooming.comfort)+'%';$('mood').textContent={ready:grooming.comfort>40?'Thư giãn quá ♡':grooming.comfort>0?'Rừ rừ…':'Đang đợi bạn',gentle:'Rừ rừ…',fast:'Nhẹ hơn chút nha',happy:'Mê lắm rồi ♡'}[grooming.reaction];$('counter').textContent=grooming.strokes+(state.mode==='brush'?' lượt chải':' cái xoa');$('reward').hidden=!grooming.completed;
    }else{ctx.drawImage(state.image,f.source.x,f.source.y,f.source.width,f.source.height,f.x,f.y,f.w,f.h);$('reward').hidden=true;}
-   for(const p of particles){p.life-=dt*1.5;p.x+=p.vx*dt;p.y-=45*dt;ctx.globalAlpha=Math.max(0,p.life)*.8;ctx.fillStyle='#fffef1';ctx.font='24px Segoe UI';ctx.fillText(state.mode==='pet'?'♡':'✧',p.x,p.y);}particles=particles.filter(p=>p.life>0);ctx.globalAlpha=1;
+   for(const p of particles){
+    if(p.kind==='fur'){advanceFur(p,dt);drawFur(ctx,p);}
+    else{p.life-=dt*1.5;p.x+=p.vx*dt;p.y-=45*dt;ctx.globalAlpha=Math.max(0,p.life)*.8;ctx.fillStyle='#fffef1';ctx.font='24px Segoe UI';ctx.fillText('♡',p.x,p.y);}
+   }particles=particles.filter(p=>p.life>0);ctx.globalAlpha=1;
    if(state.step===2&&state.selection){const{a,b}=state.selection;ctx.strokeStyle='#7752d8';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);ctx.setLineDash([]);ctx.fillStyle='#7851dc22';ctx.fillRect(a.x,a.y,b.x-a.x,b.y-a.y);}
-   if(state.step>=3&&state.hand){const w=Number($('hand-size').value)*(state.mode==='brush'?3.2:3.0),h=w*state.hand.height/state.hand.width;const p=state.step===4?smooth:{x:470,y:f.y+f.h*.3};ctx.save();ctx.translate(p.x,p.y);ctx.rotate((ASSETS[state.toolKey]?.rotation||0)+(reducedMotion?0:Math.sin(t*.006)*energy*.06));if(state.flip)ctx.scale(-1,1);const anchor=ASSETS[state.toolKey]?.contact||[.5,.5];ctx.drawImage(state.hand,-w*anchor[0],-h*anchor[1],w,h);ctx.restore();}
+   if(state.step>=3&&state.hand){
+    const animated=state.toolKey==='tool.hand'&&handSprite;
+    const w=Number($('hand-size').value)*(animated?5.4:state.mode==='brush'?2.9:3),h=w*state.hand.height/state.hand.width;
+    const p=state.step===4?smooth:{x:470,y:f.y+f.h*.3};
+    ctx.save();ctx.translate(p.x,p.y);if(state.flip)ctx.scale(-1,1);
+    ctx.rotate((ASSETS[state.toolKey]?.rotation||0)+(reducedMotion?0:Math.sin(t*.006)*energy*.04));
+    const anchor=ASSETS[state.toolKey]?.contact||[.5,.5];
+    if(animated){const frameIndex=reducedMotion||energy<.02?0:Math.floor(petCycle)%ASSETS['tool.hand'].frames;ctx.drawImage(handSprite,frameIndex*112,0,112,112,-w*anchor[0],-h*anchor[1],w,h);}
+    else ctx.drawImage(state.hand,-w*anchor[0],-h*anchor[1],w,h);
+    ctx.restore();
+   }
   }dirty=false;
  }requestAnimationFrame(frame);
 }
