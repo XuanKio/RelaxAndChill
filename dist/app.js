@@ -37,11 +37,12 @@ function fit() {
 function point(event) { const r = canvas.getBoundingClientRect(), size = Math.min(r.width, r.height); return { x: (event.clientX - r.left - (r.width - size) / 2) * SIDE / size, y: (event.clientY - r.top - (r.height - size) / 2) * SIDE / size }; }
 function toImage(p) { const f = fit(); if (!f) return null; const x = (p.x - f.x) / f.scale + f.source.x, y = (p.y - f.y) / f.scale + f.source.y; return { x, y, inside: x >= 0 && y >= 0 && x < state.image.width && y < state.image.height }; }
 function release() { keyboard=false;travel=0;furCarry=0; clearTimeout(holdTimer); holdTimer = null; holdPoint = null; $('stage').classList.remove('holding'); drawing = false; pressed = false; pointerId = null; lastPoint = null; $('brush-cursor').hidden = true; if (state.image) measure(); }
-const titles = ['Chọn nhân vật', 'Nhấc chủ thể', 'Chọn cách chơi'];
+const titles = ['Chọn nhân vật', 'Nhấc chủ thể', 'Chọn dụng cụ'];
 const descriptions = ['Ảnh của bạn, góc chill của bạn.', 'Giữ lên chủ thể để tách nền.', 'Thêm một chút cá tính.'];
 const hints = ['Ảnh chỉ xử lý trên thiết bị.', 'Giữ vào giữa chủ thể khoảng nửa giây.', 'Sẵn sàng để chill.'];
 function go(step, announce = true) {
   if(state.busy||step<1||step>4)return false;
+  setToolSettings(false);
   release();particles=[];if(step!==4)lastPanel=step;state.step=step;state.selection=null;state.sampling=false;energy=0;
   document.body.dataset.currentStep=step;document.body.classList.toggle('tools-open',step!==4);
   $('tool-panel').hidden=step===4;$('toggle-tools').setAttribute('aria-expanded',String(step!==4));
@@ -58,6 +59,16 @@ function go(step, announce = true) {
 }
 $('toggle-tools').onclick=()=>go(state.step===4?lastPanel:4);$('close-tools').onclick=$('resume-play').onclick=()=>go(4);
 document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.step)));
+function setToolSettings(open, focus = false) {
+  document.body.classList.toggle('tool-settings-open', open);
+  $('tool-picker').hidden=open;$('tool-settings').hidden=!open;
+  $('open-tool-settings').setAttribute('aria-expanded',String(open));
+  $('tool-panel').scrollTop=0;
+  if(focus)$(open?'back-tool-picker':'open-tool-settings').focus({preventScroll:true});
+}
+$('open-tool-settings').onclick=()=>setToolSettings(true,true);
+$('back-tool-picker').onclick=()=>setToolSettings(false,true);
+$('tool-panel').addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('tool-settings-open')){e.preventDefault();setToolSettings(false,true);}});
 async function loadImage(url) { const img = new Image(); img.src = url; await img.decode(); return img; }
 function setImage(img, name) { state.catKey = null;
   cancelWorker(false); const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
@@ -165,7 +176,6 @@ function refreshTool(recolor = true) {
   const tint = source => {const output=makeCanvas(source.width,source.height),c=output.getContext('2d');c.drawImage(source,0,0);const pixels=c.getImageData(0,0,output.width,output.height);pixels.data.set(tintPixels(pixels.data,state.toolStyle));c.putImageData(pixels,0,0);return output;};
   const neutral=state.toolStyle.hue===0&&state.toolStyle.saturation===100&&state.toolStyle.brightness===100;
   styledHand=neutral?state.hand:tint(state.hand);styledSprite=state.toolKey==='tool.hand'&&handSprite?(neutral?handSprite:tint(handSprite)):null;
-  const preview=makeCanvas(styledHand.width,styledHand.height);preview.getContext('2d').drawImage(styledHand,0,0);const thumbnail=preview.toDataURL('image/png');document.querySelectorAll('.hand-thumb img').forEach(img=>img.src=thumbnail);
   }
   for(const key of Object.keys(DEFAULT_TOOL_STYLE)){$('tool-'+key).value=state.toolStyle[key];$('tool-'+key+'-value').textContent=state.toolStyle[key]+(['rotation','hue'].includes(key)?'°':'%');}
   $('tool-cutout').disabled=state.toolKey!==null;
@@ -182,10 +192,10 @@ async function selectMode(mode) {
   if (state.busy) return; const toolSequence=++toolLoadSequence; if(state.hand)modeTools.set(state.mode,{hand:state.hand,original:state.handOriginal,key:state.toolKey,style:{...state.toolStyle},flip:state.flip}); release();energy=0;particles=[];petCycle=0;state.mode = mode; grooming=createGrooming(mode);state.toolKey = mode === 'brush' ? 'tool.brush' : 'tool.hand';
   const key = state.toolKey;
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed',String(b.dataset.mode === mode)));
-  document.querySelectorAll('.hand-thumb img').forEach(img => img.src = ASSETS[key].src);
+  $('tool-settings-title').textContent=mode==='brush'?'Chỉnh lược':'Chỉnh tay';
   const saved=modeTools.get(mode);
   if(saved){state.hand=saved.hand;state.handOriginal=saved.original;state.toolKey=saved.key;state.toolStyle={...saved.style};state.flip=saved.flip;refreshTool();return;}
-  state.toolStyle={...DEFAULT_TOOL_STYLE};state.handOriginal=null;state.hand=null;styledHand=null;styledSprite=null;dirty=true;
+  state.toolStyle={...DEFAULT_TOOL_STYLE};state.flip=false;state.handOriginal=null;state.hand=null;styledHand=null;styledSprite=null;dirty=true;
   try { const img = await loadImage(ASSETS[key].src); if(key === 'tool.hand' && !handSprite)handSprite = await loadImage(ASSETS[key].sprite); if(toolSequence!==toolLoadSequence || state.toolKey !== key)return; state.hand = state.defaultHand = img; refreshTool(); } catch { notify('Không tải được dụng cụ. Thử lại nhé.'); }
 }
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => selectMode(b.dataset.mode));

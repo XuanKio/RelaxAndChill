@@ -36,3 +36,29 @@ body{overflow-x:hidden}.site-header{height:76px;padding-top:14px;padding-bottom:
   body.tools-open .control-panel .close-tools{top:9px;right:0;z-index:4}
   .hand-thumb{height:72px}
 }
+
+/* Tool types have fixed thumbnails; detailed editing is a separate panel view. */
+.tool-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tool-choices button{display:grid;justify-items:center;gap:4px;padding:10px;border:1px solid #dce2d3;border-radius:13px;background:white;color:#3b5744;min-width:0}
+.tool-choices button[aria-pressed=true]{background:#edf5e6;border-color:#83a66f;box-shadow:inset 0 0 0 1px #83a66f}
+.tool-choice-image{height:78px;width:100%;display:flex;justify-content:center;align-items:center}
+.tool-choice-image img{width:100%;height:100%;object-fit:contain}
+.tool-choices strong{font-size:14px}.tool-choices small{font-size:11px;color:#64765d}
+#open-tool-settings{margin-top:12px;justify-content:space-between}
+.tool-settings-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:-18px;z-index:4;background:#fffefb;box-shadow:0 -18px 0 18px #fffefb;margin-bottom:12px}
+.tool-settings-heading h2{font-size:15px;margin:0;white-space:nowrap}
+#back-tool-picker{min-height:44px;padding:8px 0;font-size:13px}
+.tool-direction{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#eaf0e4;border-radius:10px;padding:4px}
+.tool-direction button{border:0;border-radius:7px;background:transparent;min-height:40px;font-size:12px;color:#52654d}
+.tool-direction button[aria-pressed=true]{background:white;box-shadow:0 1px 4px #243f1915}
+.tool-settings-open .site-header,.tool-settings-open .control-panel>.steps,.tool-settings-open .panel-heading,.tool-settings-open #close-tools,.tool-settings-open #resume-play{display:none}
+.tool-settings-open .control-panel{max-height:calc(100svh - 100px)}
+.tool-photo-controls{border-top:1px solid #e0e4d8;margin-top:8px}
+.tool-photo-controls summary{min-height:44px;display:flex;align-items:center}
+#tool-settings .swatches{margin-top:12px}
+@media(max-width:760px){
+ body.tools-open.tool-settings-open .studio{height:calc(100svh - 65px)}
+ .tool-settings-heading{top:-12px;box-shadow:0 -12px 0 12px #fffefb;margin-bottom:6px}
+ .tool-choice-image{height:70px}
+}
+@media(prefers-reduced-motion:no-preference){#tool-picker:not([hidden]),#tool-settings:not([hidden]){animation:tool-panel-in .16s ease-out}@keyframes tool-panel-in{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}}
