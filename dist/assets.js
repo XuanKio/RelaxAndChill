@@ -1,7 +1,7 @@
 export const ASSETS = Object.freeze({
   'cat.mochi': { src: 'assets/mochi.png', label: 'Mochi', type: 'cat' },
   'cat.tabby': { src: 'cat.png', label: 'Mướp', type: 'cat' },
-  'tool.hand': { src: 'hand.png', label: 'Bàn tay', type: 'tool', contact: [0.48, 0.56] },
+  'tool.hand': { src: 'hand.png', label: 'Bàn tay', type: 'tool', contact: [0.48, 0.56], rotation: -1.35 },
   'tool.brush': { src: 'assets/brush.png', label: 'Lược chải', type: 'tool', contact: [0.26, 0.34] }
 });
 export const PRESETS = Object.freeze({

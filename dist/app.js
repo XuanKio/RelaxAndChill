@@ -208,7 +208,7 @@ function frame(t){
    }else{ctx.drawImage(state.image,f.source.x,f.source.y,f.source.width,f.source.height,f.x,f.y,f.w,f.h);$('reward').hidden=true;}
    for(const p of particles){p.life-=dt*1.5;p.x+=p.vx*dt;p.y-=45*dt;ctx.globalAlpha=Math.max(0,p.life)*.8;ctx.fillStyle='#fffef1';ctx.font='24px Segoe UI';ctx.fillText(state.mode==='pet'?'♡':'✧',p.x,p.y);}particles=particles.filter(p=>p.life>0);ctx.globalAlpha=1;
    if(state.step===2&&state.selection){const{a,b}=state.selection;ctx.strokeStyle='#7752d8';ctx.lineWidth=3;ctx.setLineDash([8,6]);ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);ctx.setLineDash([]);ctx.fillStyle='#7851dc22';ctx.fillRect(a.x,a.y,b.x-a.x,b.y-a.y);}
-   if(state.step>=3&&state.hand){const w=Number($('hand-size').value)*(state.mode==='brush'?3.2:4.0),h=w*state.hand.height/state.hand.width;const p=state.step===4?smooth:{x:470,y:f.y+f.h*.3};ctx.save();ctx.translate(p.x,p.y);ctx.rotate(reducedMotion?0:Math.sin(t*.006)*energy*.06);if(state.flip)ctx.scale(-1,1);const anchor=ASSETS[state.toolKey]?.contact||[.5,.5];ctx.drawImage(state.hand,-w*anchor[0],-h*anchor[1],w,h);ctx.restore();}
+   if(state.step>=3&&state.hand){const w=Number($('hand-size').value)*(state.mode==='brush'?3.2:3.0),h=w*state.hand.height/state.hand.width;const p=state.step===4?smooth:{x:470,y:f.y+f.h*.3};ctx.save();ctx.translate(p.x,p.y);ctx.rotate((ASSETS[state.toolKey]?.rotation||0)+(reducedMotion?0:Math.sin(t*.006)*energy*.06));if(state.flip)ctx.scale(-1,1);const anchor=ASSETS[state.toolKey]?.contact||[.5,.5];ctx.drawImage(state.hand,-w*anchor[0],-h*anchor[1],w,h);ctx.restore();}
   }dirty=false;
  }requestAnimationFrame(frame);
 }
