@@ -8,7 +8,7 @@ import { createGroomingAudio } from './grooming-audio.js';
 import { dashPose, drawDashSmoke, drawScooterRide, DASH_DURATION } from './dash.js';
 import { createToolCutout } from './tool-cutout.js';
 import { alphaBounds } from './background.js';
-import { ASSETS, COLORS, PRESETS } from './assets.js?v=20261004-comb';
+import { ASSETS, COLORS, PRESETS } from './assets.js?v=20261004-comb105';
 import { smallImage, packScene, unpackScene, sceneURL, validateScene } from './share.js?v=20261004-background';
 import { createGrooming, tickGrooming, springFactor } from './grooming.js';
 import { sampleCoat, furCount, makeFur, advanceFur, drawFur } from './fur.js?v=20261004';
@@ -22,7 +22,7 @@ document.body.classList.toggle('home-preview',homePreview);
 const sounds=createGroomingAudio($('toggle-sound'));
 let dashAge=-1,engineFired=false,scooter=null;
 const canvas = $('canvas'), ctx = canvas.getContext('2d'), SIDE = 900;
-const state = { mode: 'brush', bg: 'mint', catKey: 'cat.tabby', toolKey: 'tool.brush', step: 1, reached: 1, original: null, image: null, bounds: null, hand: null, handOriginal: null, toolStyle: {...DEFAULT_TOOL_STYLE}, defaultHand: null, flip: false, method: 'auto', tool: 'erase', history: [], busy: false, count: 0, selection: null, sampling: false };
+const state = { mode: 'brush', bg: 'mint', catKey: 'cat.tabby', toolKey: 'tool.brush', step: 1, reached: 1, original: null, image: null, bounds: null, hand: null, handOriginal: null, toolStyle: {...DEFAULT_TOOL_STYLE,rotation:105}, defaultHand: null, flip: false, method: 'auto', tool: 'erase', history: [], busy: false, count: 0, selection: null, sampling: false };
 Object.assign(state,{background:null,bgOriginal:null,bgHistory:[],subjectScale:1});
 let holdTimer = null, holdPoint = null, lastPanel = 1;
 let dirty = true, drawing = false, pressed = false, pointerId = null, lastPoint = null, pointer = { x: 470, y: 270 }, energy = 0, phase = 0, autoUntil = 0, worker = null, workerTimer = null, loadSequence = 0;
@@ -224,7 +224,8 @@ const toolCutout=createToolCutout(image=>{state.hand=image;state.toolKey=null;re
 $('tool-cutout').onclick=()=>{if(state.busy||!state.hand||state.toolKey)return;release();toolCutout.open(state.hand,state.handOriginal);};
 for(const key of Object.keys(DEFAULT_TOOL_STYLE))$('tool-'+key).oninput=()=>{state.toolStyle[key]=Number($('tool-'+key).value);refreshTool(key!=='rotation');};
 $('tool-default').onclick=()=>{modeTools.delete(state.mode);state.hand=null;$('hand-note').textContent='JPG, PNG hoặc WEBP.';selectMode(state.mode);};
-$('tool-reset-style').onclick=()=>{state.toolStyle={...DEFAULT_TOOL_STYLE};refreshTool();};
+function defaultToolStyle(){return {...DEFAULT_TOOL_STYLE,rotation:state.toolKey==='tool.brush'?105:0};}
+$('tool-reset-style').onclick=()=>{state.toolStyle=defaultToolStyle();refreshTool();};
 async function selectMode(mode) {
   dashAge=-1;
   if (state.busy) return; const toolSequence=++toolLoadSequence; if(state.hand)modeTools.set(state.mode,{hand:state.hand,original:state.handOriginal,key:state.toolKey,style:{...state.toolStyle},flip:state.flip}); release();energy=0;particles=[];petCycle=0;state.mode = mode; grooming=createGrooming(mode);state.toolKey = mode === 'brush' ? 'tool.brush' : 'tool.hand';
@@ -233,7 +234,7 @@ async function selectMode(mode) {
   $('tool-settings-title').textContent=mode==='brush'?'Chỉnh lược':'Chỉnh tay';
   const saved=modeTools.get(mode);
   if(saved){state.hand=saved.hand;state.handOriginal=saved.original;state.toolKey=saved.key;state.toolStyle={...saved.style};state.flip=saved.flip;refreshTool();return;}
-  state.toolStyle={...DEFAULT_TOOL_STYLE};state.flip=false;state.handOriginal=null;state.hand=null;styledHand=null;styledSprite=null;dirty=true;
+  state.toolStyle=defaultToolStyle();state.flip=false;state.handOriginal=null;state.hand=null;styledHand=null;styledSprite=null;dirty=true;
   try { const img = await loadImage(ASSETS[key].src); if(key === 'tool.hand' && !handSprite)handSprite = await loadImage(ASSETS[key].sprite); if(toolSequence!==toolLoadSequence || state.toolKey !== key)return; state.hand = state.defaultHand = img; refreshTool(); } catch { notify('Không tải được dụng cụ. Thử lại nhé.'); }
 }
 document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => selectMode(b.dataset.mode));
@@ -301,7 +302,7 @@ function frame(t){
    if(state.step===4&&!state.busy){
     if(keyboard){const p={x:450+Math.sin(t*.0028)*f.w*.22,y:f.y+f.h*.48};if(isContact(p)&&isContact(pointer))travel+=Math.hypot(p.x-pointer.x,p.y-pointer.y)/SIDE;pointer=p;}
     const distance=travel;travel=0;const contact=isContact(pointer);grooming=tickGrooming(grooming,{dt,distance,contact,active:pressed});
-    if(state.mode==='brush'&&grooming.completed&&dashAge<0){dashAge=0;engineFired=false;release();particles=[];}
+    if(grooming.completed&&dashAge<0){dashAge=0;engineFired=false;release();particles=[];}
     if(dashAge>=0){dashAge+=dt;if(dashAge>1.2&&!engineFired){engineFired=true;sounds.engine();}if(dashAge>=DASH_DURATION){dashAge=-1;grooming=createGrooming(state.mode);}}
     sounds.tick(state.mode,pressed&&contact&&distance>.0001&&dashAge<0,grooming.comfort,dt);
     const desired=pressed&&contact?Math.min(1,distance/dt*2):0;energy+=(desired-energy)*springFactor(dt,10);smooth.x+=(pointer.x-smooth.x)*springFactor(dt,22);smooth.y+=(pointer.y-smooth.y)*springFactor(dt,22);
@@ -321,7 +322,7 @@ function frame(t){
       if(color)particles.push(makeFur(position.x,position.y,color,Math.sign(pointer.x-smooth.x)));
      }
     }else if(!reducedMotion&&desired>.1&&t-lastParticle>180&&particles.length<25){particles.push({kind:'heart',x:smooth.x,y:smooth.y,vx:(Math.random()-.5)*45,life:1});lastParticle=t;}
-    $('comfort').value=grooming.comfort;$('comfort-value').textContent=Math.floor(grooming.comfort)+'%';$('mood').textContent=dashAge>=0?'Vút! 💨':{ready:grooming.comfort>40?'Thư giãn quá ♡':grooming.comfort>0?'Rừ rừ…':'Đang đợi bạn',gentle:'Rừ rừ…',fast:'Nhẹ hơn chút nha',happy:state.mode==='brush'?'Vút! 💨':'Mê lắm rồi ♡'}[grooming.reaction];$('counter').textContent=grooming.strokes+(state.mode==='brush'?' lượt chải':' cái xoa');$('reward').hidden=state.mode==='brush'||!grooming.completed;
+    $('comfort').value=grooming.comfort;$('comfort-value').textContent=Math.floor(grooming.comfort)+'%';$('mood').textContent=dashAge>=0?'Vút! 💨':{ready:grooming.comfort>40?'Thư giãn quá ♡':grooming.comfort>0?'Rừ rừ…':'Đang đợi bạn',gentle:'Rừ rừ…',fast:'Nhẹ hơn chút nha',happy:'Vút! 💨'}[grooming.reaction];$('counter').textContent=grooming.strokes+(state.mode==='brush'?' lượt chải':' cái xoa');$('reward').hidden=true;
    }else{ctx.drawImage(state.image,f.source.x,f.source.y,f.source.width,f.source.height,f.x,f.y,f.w,f.h);$('reward').hidden=true;}
    for(const p of particles){
     if(p.kind==='fur'){advanceFur(p,dt);drawFur(ctx,p);}
@@ -351,7 +352,7 @@ async function boot(){
   const img=await loadImage(ASSETS[scene.cat]?.src||scene.cat);setImage(img,scene.name);state.catKey=ASSETS[scene.cat]?scene.cat:null;$('scene-name').value=scene.name;
   if(scene.background){state.background=clone(await loadImage(scene.background));state.bgOriginal=clone(state.background);}
   await selectMode(scene.mode);if(!ASSETS[scene.tool]){state.hand=await loadImage(scene.tool);state.toolKey=null;}else{state.hand=await loadImage(ASSETS[scene.tool].src);state.toolKey=scene.tool;}
-  state.flip=scene.flip;state.toolStyle=validateToolStyle(scene.toolStyle);state.handOriginal=state.toolKey?null:state.hand;refreshTool();state.bg=scene.bg;$('stage').style.backgroundColor=COLORS[scene.bg];$('hand-size').value=scene.size;$('soft').value=scene.soft;$('hand-size-value').textContent=scene.size+'%';$('soft-value').textContent=scene.soft+'%';
+  state.flip=scene.flip;state.toolStyle=validateToolStyle(scene.toolStyle||defaultToolStyle());state.handOriginal=state.toolKey?null:state.hand;refreshTool();state.bg=scene.bg;$('stage').style.backgroundColor=COLORS[scene.bg];$('hand-size').value=scene.size;$('soft').value=scene.soft;$('hand-size-value').textContent=scene.size+'%';$('soft-value').textContent=scene.soft+'%';
   document.querySelectorAll('[data-hand]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.hand==='flipped')===state.flip)));document.querySelectorAll('[data-bg]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bg===state.bg)));
   go(new URLSearchParams(location.search).has('edit')?1:4,false);notify('');
   if(saved){

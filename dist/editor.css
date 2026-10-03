@@ -75,9 +75,18 @@ body{overflow-x:hidden}.site-header{height:76px;padding-top:14px;padding-bottom:
 #manual-controls .range-label{margin:7px 0 2px;font-size:12px}
 #manual-controls input[type=range]{width:100%;min-height:32px;margin:0 0 6px}
 #paint-shape{width:100%;min-height:40px;border:1px solid #dce2d2;border-radius:9px;background:white;color:#405b47;padding:6px;font:inherit;font-size:12px}
-.paint-color-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;margin:8px 0 4px}
-#paint-color{width:48px;height:40px;padding:3px;border:1px solid #dce2d2;border-radius:8px;background:white}
-.paint-swatches{display:flex;flex-wrap:wrap;gap:4px}.paint-swatches button{height:28px;min-width:28px;flex:1;border:3px solid white;border-radius:50%;background:var(--paint);box-shadow:0 0 0 1px #dce2d2}.paint-swatches button[aria-pressed=true]{box-shadow:0 0 0 2px #658461}
+/* Fixed circular color wells, with generous touch targets like a paint palette. */
+.paint-swatches{display:flex;flex-wrap:wrap;align-items:center;gap:0;margin:6px -4px}
+.paint-swatches button{position:relative;width:40px;height:40px;min-width:40px;flex:0 0 40px;padding:6px;border:0;background:transparent;border-radius:50%}
+.paint-swatches button::before{content:'';display:block;width:28px;height:28px;border-radius:50%;background:var(--paint);box-shadow:inset 0 0 0 1px #294a4026}
+.paint-swatches button[aria-pressed=true]::before{outline:2px solid #658461;outline-offset:2px}
+#paint-color{appearance:none;-webkit-appearance:none;width:40px;height:40px;min-width:40px;flex:0 0 40px;padding:6px;border:0;border-radius:50%;background:transparent;cursor:pointer}
+#paint-color::-webkit-color-swatch-wrapper{padding:0}
+#paint-color::-webkit-color-swatch{border:0;border-radius:50%;box-shadow:0 0 0 1px #658461,inset 0 0 0 3px white}
+#paint-color::-moz-color-swatch{border:0;border-radius:50%;box-shadow:0 0 0 1px #658461,inset 0 0 0 3px white}
+.paint-swatches button:hover::before{transform:scale(1.08)}
+#paint-controls{border-top:1px solid #e4e9df;margin-top:4px;padding-top:4px}
+
 #save-edit{margin-top:12px;position:sticky;bottom:-12px;z-index:3;box-shadow:0 10px 0 10px #fffefb}
 .gif-dialog{max-width:460px;max-height:calc(100svh - 24px);overflow:auto;padding:20px}.gif-dialog h2{font-size:21px}.gif-dialog progress{width:100%;height:9px;accent-color:#52795a}.gif-preview{display:block;width:100%;aspect-ratio:1;border-radius:14px;object-fit:contain;background:#d7e9df}.gif-status{font-size:12px}.gif-actions{display:flex;gap:8px}.gif-actions>*{font-size:13px;padding:11px;min-width:0;margin:0!important}.gif-dialog .help{font-size:12px}
 body.home-preview{background:transparent}body.home-preview .site-header,body.home-preview #toggle-tools,body.home-preview #dropzone,body.home-preview #share,body.home-preview #export-gif,body.home-preview .preview-footer,body.home-preview #tool-panel{display:none!important}
@@ -93,3 +102,27 @@ body[data-current-step='5'] .control-panel .panel-heading{display:none}
 .stage-sound{position:absolute;z-index:3;right:10px;top:10px;width:40px;height:40px;border:0;border-radius:50%;background:#ffffffc9;font-size:17px;display:grid;place-items:center}
 .stage-sound:hover{background:white}.home-preview .stage-sound{width:36px;height:36px;right:8px;top:8px;font-size:15px}
 @media(max-width:360px){.comfort-chip{min-width:175px;gap:10px;font-size:11px}.stage-sound{right:6px;top:8px;width:36px;height:36px}}
+
+/* Familiar icon tools; accessible names and native tooltips keep their meaning. */
+#manual-controls{grid-template-columns:48px minmax(0,1fr);gap:12px}
+#manual-controls .tool-options{padding:2px}
+#manual-controls .tool-options button{display:grid;place-items:center;min-width:44px;min-height:44px;padding:10px}
+#manual-controls .tool-options button[aria-pressed=true]{color:#2d5548;background:#dcebcf;box-shadow:inset 0 0 0 1px #a0b790}
+.tool-options svg,.background-actions svg,#edit-history svg{width:22px;height:22px;flex:none}
+.background-actions{justify-content:flex-end;margin-bottom:8px}
+.background-actions>*,#edit-history>*{flex:0 0 44px;width:44px;min-height:44px;padding:10px}
+#edit-history{justify-content:flex-end;margin-top:8px;gap:4px}
+#manual-controls #tool-help{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+#back-tool-picker{width:44px;height:44px;padding:10px;display:grid;place-items:center;border-radius:50%;text-decoration:none;background:#edf2e7;color:#365b48}
+#back-tool-picker:hover{background:#dfead7}
+@media(prefers-reduced-motion:no-preference){
+ .stage{transition:background-color .28s ease}
+ button,label[role=button]{transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease}
+ button:active:not(:disabled),label[role=button]:active{transform:scale(.97)}
+ .paint-swatches button::before{transition:transform .16s ease,box-shadow .16s ease}
+ .control-panel [data-panel]:not([hidden]),#tool-picker:not([hidden]),#tool-settings:not([hidden]){animation:chill-panel-in .18s ease-out}
+ details[open]>:not(summary){animation:chill-panel-in .16s ease-out}
+ @keyframes chill-panel-in{from{opacity:.45;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+}
+@media(prefers-reduced-motion:reduce){button,label[role=button],.stage,.paint-swatches button::before{transition:none!important}.control-panel *{animation:none!important}}
