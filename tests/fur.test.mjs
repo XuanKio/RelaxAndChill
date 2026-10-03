@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sampleCoat, furCount, makeFur, advanceFur } from '../dist/fur.js';
+import { sampleCoat, furCount, makeFur, advanceFur } from '../public/fur.js';
 
 test('fur keeps the contacted coat color and ignores transparent background', () => {
   const data = new Uint8ClampedArray([180,100,40,255, 255,255,255,0, 40,35,30,255]);

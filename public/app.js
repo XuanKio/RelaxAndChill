@@ -1,6 +1,7 @@
 import { DEFAULT_TOOL_STYLE, tintPixels, validateToolStyle } from './tool-style.js';
 import { paintStamp } from './paint.js';
 import { draftStore } from './draft.js';
+import QRCode from './vendor/qrcode.esm.js';
 import { createGifExport } from './gif-export.js';
 import { isolateHandFrames } from './hand-frames.js';
 import { coverRect, stageSize } from './scene-layout.js';
@@ -36,7 +37,7 @@ const editHistory=()=>state.step===5?state.bgHistory:state.history;
 function checkpoint() { if(state.step!==5)state.catKey=null;const c=editImage(),history=editHistory();history.push(c.getContext('2d').getImageData(0,0,c.width,c.height));if(history.length>6)history.shift();$('undo').disabled=false; }
 function updateButtons() {
   $('undo').disabled=state.busy||!editHistory().length;
-  for(const id of ['toggle-tools','close-tools','resume-play','save-edit','export-gif','share','lift'])$(id).disabled=state.busy||!state.image;
+  for(const id of ['toggle-tools','close-tools','resume-play','save-edit','share','lift'])$(id).disabled=state.busy||!state.image;
   document.querySelectorAll('.steps button').forEach(b=>b.disabled=state.busy);
 }
 function fit() {
@@ -74,7 +75,7 @@ function go(step, announce = true) {
   $('preview-label').textContent=step===4?'':step===2?'CHỈNH SỬA CHỦ THỂ':'NHÂN VẬT CỦA BẠN';
   canvas.setAttribute('aria-label',step===4?'Giữ và rê trên nhân vật để chơi, hoặc giữ phím cách.':'Ảnh chỉnh sửa. Giữ chủ thể để tách nền, hoặc chọn cọ và vẽ.');$('stage').classList.toggle('editing',step===2);$('comfort-chip').hidden=step!==4;$('counter').hidden=step!==4;
   if(announce)notify('');updateButtons();dirty=true;
-  if(step!==4){$('tool-panel').scrollTop=0;if(matchMedia('(max-width:760px)').matches)window.scrollTo({top:0,behavior:'instant'});}
+  if(step!==4){$('tool-panel').scrollTop=0;document.querySelector('.panel-body').scrollTop=0;document.querySelector('.brush-settings').scrollTop=0;if(matchMedia('(max-width:760px)').matches)window.scrollTo({top:0,behavior:'instant'});}
   return true;
 }
 $('toggle-tools').onclick=()=>go(state.step===4?lastPanel:4);$('close-tools').onclick=$('resume-play').onclick=()=>go(4);
@@ -83,7 +84,7 @@ function setToolSettings(open, focus = false) {
   document.body.classList.toggle('tool-settings-open', open);
   $('tool-picker').hidden=open;$('tool-settings').hidden=!open;
   $('open-tool-settings').setAttribute('aria-expanded',String(open));
-  $('tool-panel').scrollTop=0;
+  $('tool-panel').scrollTop=0;document.querySelector('.panel-body').scrollTop=0;document.querySelector('.brush-settings').scrollTop=0;
   if(focus)$(open?'back-tool-picker':'open-tool-settings').focus({preventScroll:true});
 }
 $('open-tool-settings').onclick=()=>setToolSettings(true,true);
@@ -129,7 +130,7 @@ for (const [label, input] of [['dropzone', 'file'], ['hand-upload', 'hand-file']
 for (const name of ['dragenter', 'dragover']) $('dropzone').addEventListener(name, e => { e.preventDefault(); $('dropzone').classList.add('drag'); });
 for (const name of ['dragleave', 'drop']) $('dropzone').addEventListener(name, e => { e.preventDefault(); $('dropzone').classList.remove('drag'); if (name === 'drop') readFile(e.dataTransfer.files[0]); });
 async function demo() { if (state.busy) return; const sequence = ++loadSequence; try { const img = await loadImage('cat.png'); if (sequence !== loadSequence) return; setImage(img, 'Mèo mẫu'); state.catKey = 'cat.tabby'; notify('Mèo mẫu đã tách nền.'); } catch { $('empty').hidden = true === !!state.image; notify('Không tải được mèo mẫu. Hãy chọn ảnh của bạn.'); } }
-$('demo').onclick = demo;
+
 function setMethod(method) {
   if(state.busy)return;release(); state.method = method; state.sampling = false; state.selection = null; $('auto-controls').hidden = method !== 'auto'; $('manual-controls').hidden = method !== 'manual';
   document.querySelectorAll('[data-method]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.method === method))); $('hint').textContent = method === 'manual' ? 'Vẽ để xóa hoặc khôi phục.' : 'Giữ vào giữa chủ thể khoảng nửa giây.'; dirty = true;
@@ -251,19 +252,35 @@ $('save-edit').onclick=async()=>{
     const [image,original,hand,handOriginal]=await Promise.all([canvasBlob(state.image),canvasBlob(state.original),canvasBlob(state.hand),canvasBlob(state.handOriginal||state.hand)]);
     const background=state.background?await canvasBlob(state.background):null,bgOriginal=state.bgOriginal?await canvasBlob(state.bgOriginal):null;
     await draftStore({settings,image,original,hand,handOriginal,background,bgOriginal,catKey:state.catKey,toolKey:state.toolKey});
-    setBusy(false);go(1);notify('Đã lưu bản chỉnh trên thiết bị.');
+    setBusy(false);go(4);$('share').classList.add('share-ready');$('share').focus({preventScroll:true});notify('Đã lưu. Chạm máy bay để gửi bạn.');
   }catch{setBusy(false);notify('Chưa lưu được trên thiết bị. Ảnh vẫn ở đây; hãy thử lại.');}
 };
 const gifExport=createGifExport(async()=>{
   if(!state.bounds||!state.hand)throw new Error('Chưa có ảnh.');
   const b=state.bounds,anchor=ASSETS[state.toolKey]?.contact||[.5,.5];
   const images=await Promise.all([createImageBitmap(state.image),createImageBitmap(styledHand||state.hand),state.toolKey==='tool.hand'&&handSprite?createImageBitmap(styledSprite||handSprite):null]);
-  return {image:images[0],hand:images[1],sprite:images[2],backdrop:state.background?await createImageBitmap(state.background):null,bounds:{...b},subjectScale:state.subjectScale,background:COLORS[state.bg],mode:state.mode,size:Number($('hand-size').value),soft:Number($('soft').value),flip:state.flip,rotation:(ASSETS[state.toolKey]?.rotation||0)+state.toolStyle.rotation*Math.PI/180,anchor,coat:sampleCoat(state.hitPixels,state.image.width,state.image.height,b.x+b.width*.5,b.y+b.height*.35)};
+  return {image:images[0],hand:images[1],sprite:images[2],scooter:await createImageBitmap(scooter||await loadImage('assets/sh-scooter.png')),backdrop:state.background?await createImageBitmap(state.background):null,bounds:{...b},subjectScale:state.subjectScale,background:COLORS[state.bg],mode:state.mode,size:Number($('hand-size').value),soft:Number($('soft').value),flip:state.flip,rotation:(ASSETS[state.toolKey]?.rotation||0)+state.toolStyle.rotation*Math.PI/180,anchor,coat:sampleCoat(state.hitPixels,state.image.width,state.image.height,b.x+b.width*.5,b.y+b.height*.35)};
 },release);
-$('export-gif').onclick=()=>{if(!state.busy)gifExport.open();};
-$('share').onclick=async()=>{
- if(state.busy||!state.bounds||!state.hand)return;release();$('share').disabled=true;
- try{$('share-url').value=sceneURL(await packScene(currentScene()));$('share-status').textContent=state.catKey&&state.toolKey?'Link mở chiếc mèo và thiết lập hiện tại.':'Ảnh thu nhỏ nằm trong link; một số ứng dụng giới hạn độ dài.';$('native-share').hidden=!navigator.share;$('share-dialog').showModal();}catch(error){notify(error.message);}finally{$('share').disabled=false;}
+$('share-gif').onclick=()=>{if(!state.busy){$('share-dialog').close();gifExport.open();}};
+function shareChoice(){ $('share-choices').hidden=false;$('share-link-panel').hidden=true;$('share-heading').textContent='Gửi một chút chill'; }
+$('share').onclick=()=>{if(state.busy||!state.bounds||!state.hand)return;release();shareChoice();$('share-dialog').showModal();$('share').classList.remove('share-ready');};
+$('share-back').onclick=shareChoice;
+$('share-link').onclick=async()=>{
+ $('share-link').disabled=true;
+ try{
+  const scene=currentScene(),fullURL=sceneURL(await packScene(scene));let qrURL=fullURL,compact=false;
+  if(qrURL.length>2200){
+   for(const size of [96,64,48,32,24]){
+    const qrScene={...scene,cat:state.catKey||smallImage(state.image,state.bounds,size),tool:state.toolKey||smallImage(state.hand,null,size),...(state.background?{background:smallImage(state.background,null,size)}:{})};
+    qrURL=sceneURL(await packScene(qrScene));compact=true;if(qrURL.length<=2200)break;
+   }
+  }
+  $('share-url').value=fullURL;$('share-choices').hidden=true;$('share-link-panel').hidden=false;$('share-heading').textContent='Quét để chơi cùng';
+  $('share-qr').hidden=true;
+  if(qrURL.length<=2900){$('share-qr').src=await QRCode.toDataURL(qrURL,{width:420,margin:4,errorCorrectionLevel:'L',color:{dark:'#244c3eff',light:'#ffffffff'}});$('share-qr').hidden=false;}
+  $('share-status').textContent=qrURL.length>2900?'Ảnh quá chi tiết cho QR. Bạn vẫn có thể sao chép link.':compact?'QR dùng ảnh thu nhỏ. Link giữ ảnh rõ hơn.':'Quét QR hoặc sao chép link.';
+  $('native-share').hidden=!navigator.share;
+ }catch(error){$('share-status').textContent=error.message;$('share-choices').hidden=true;$('share-link-panel').hidden=false;}finally{$('share-link').disabled=false;}
 };
 $('copy-link').onclick=async()=>{try{await navigator.clipboard.writeText($('share-url').value);$('share-status').textContent='Đã sao chép. Gửi cho một người bạn nhé!';}catch{$('share-url').focus();$('share-url').select();$('share-status').textContent='Chạm giữ hoặc Ctrl+C để sao chép.';}};
 $('native-share').onclick=async()=>{try{await navigator.share({title:'Một chút RelaxAndChill',url:$('share-url').value});}catch(error){if(error.name!=='AbortError')$('share-status').textContent='Hãy dùng nút sao chép link.';}};

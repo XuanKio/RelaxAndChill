@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_TOOL_STYLE, tintPixels, validateToolStyle } from '../dist/tool-style.js';
-import { PRESETS } from '../dist/assets.js';
-import { packScene, unpackScene, validateScene } from '../dist/share.js';
+import { DEFAULT_TOOL_STYLE, tintPixels, validateToolStyle } from '../public/tool-style.js';
+import { PRESETS } from '../public/assets.js';
+import { packScene, unpackScene, validateScene } from '../public/share.js';
 
 test('neutral tool colors preserve pixels including transparent edges', () => {
   const pixels=new Uint8ClampedArray([180,120,40,255, 40,100,200,70, 230,210,200,0]);

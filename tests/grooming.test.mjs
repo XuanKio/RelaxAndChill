@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGrooming, tickGrooming, springFactor } from '../dist/grooming.js';
+import { createGrooming, tickGrooming, springFactor } from '../public/grooming.js';
 test('stationary, outside, and released pointers do not score', () => {
   const initial = createGrooming();
   for (const input of [{ dt: .02, active: true, contact: true }, { dt: .02, distance: .01, active: true }, { dt: .02, distance: .01, contact: true }]) assert.equal(tickGrooming(initial, input).comfort, 0);

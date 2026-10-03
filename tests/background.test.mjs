@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { removeConnectedBackground, alphaBounds } from '../dist/background.js';
+import { removeConnectedBackground, alphaBounds } from '../public/background.js';
 function fixture(rows) {
   const colors = { '.': [250, 250, 250, 255], '#': [25, 35, 45, 255], ' ': [0, 0, 0, 0] };
   return { width: rows[0].length, height: rows.length, data: new Uint8ClampedArray(rows.join('').split('').flatMap(x => colors[x])) };

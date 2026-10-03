@@ -1,4 +1,10 @@
-export const GIF_SIZE = 400, GIF_FRAMES = 40, GIF_DELAY = 80;
+export const GIF_SIZE = 400, GIF_FRAMES = 100, GIF_DELAY = 80, GIF_GROOM_FRAMES = 60;
+export function gifMoment(index) {
+  const frame = Math.max(0, Math.min(GIF_FRAMES - 1, index));
+  return frame < GIF_GROOM_FRAMES
+    ? { stage: 'groom', progress: frame / GIF_GROOM_FRAMES, age: 0 }
+    : { stage: 'ride', progress: 1, age: (frame - GIF_GROOM_FRAMES) * GIF_DELAY / 1000 };
+}
 export function gifPose(index, mode, softness = .5) {
   const phase = (index % GIF_FRAMES) / GIF_FRAMES * Math.PI * 2;
   const stroke = phase * 2;

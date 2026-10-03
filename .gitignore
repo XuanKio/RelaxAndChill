@@ -6,3 +6,6 @@ work/
 .sites-runtime/
 *.log
 .DS_Store
+
+.next/
+out/

@@ -1,6 +1,6 @@
 export function createGifExport(getSnapshot, release) {
   const dialog=document.createElement('dialog');dialog.className='gif-dialog';dialog.setAttribute('aria-label','Xuất GIF');
-  dialog.innerHTML='<div class="cutout-heading"><h2>Gửi một cái xoa ♡</h2><button class="icon-button" data-close aria-label="Đóng xuất GIF">×</button></div><p class="help">GIF lặp · 400 × 400 · 3,2 giây · không âm thanh</p><img class="gif-preview" alt="Ảnh động xoa hoặc chải nhân vật" hidden><progress max="1" value="0" aria-label="Tiến độ tạo GIF"></progress><p class="gif-status" role="status">Đang tạo GIF…</p><div class="gif-actions"><a class="primary full" data-download hidden download="relax-and-chill.gif">Tải GIF</a><button class="secondary full" data-share hidden>Gửi GIF</button><button class="secondary full" data-retry hidden>Thử lại</button></div>';
+  dialog.innerHTML='<div class="cutout-heading"><h2>Gửi một cái xoa ♡</h2><button class="icon-button" data-close aria-label="Đóng xuất GIF">×</button></div><p class="help">Xoa / chải → lên SH · 8 giây · không âm thanh</p><img class="gif-preview" alt="Ảnh động xoa hoặc chải, rồi nhân vật lên SH" hidden><progress max="1" value="0" aria-label="Tiến độ tạo GIF"></progress><p class="gif-status" role="status">Đang tạo GIF…</p><div class="gif-actions"><a class="primary full" data-download hidden download="relax-and-chill.gif">Tải GIF</a><button class="secondary full" data-share hidden>Gửi GIF</button><button class="secondary full" data-retry hidden>Thử lại</button></div>';
   document.body.append(dialog);
   let worker=null,url=null,file=null,sequence=0,timer=null;
   const q=s=>dialog.querySelector(s);
@@ -15,7 +15,7 @@ export function createGifExport(getSnapshot, release) {
     const fail=()=>{worker?.terminate();worker=null;clearTimeout(timer);q('progress').hidden=true;q('.gif-status').textContent='Chưa tạo được GIF. Thử lại bằng trình duyệt mới hơn.';q('[data-retry]').hidden=false;};
     try{
       const snapshot=await getSnapshot();
-      if(request!==sequence){snapshot.image.close();snapshot.hand.close();snapshot.sprite?.close();snapshot.backdrop?.close();return;}
+      if(request!==sequence){snapshot.image.close();snapshot.hand.close();snapshot.sprite?.close();snapshot.backdrop?.close();snapshot.scooter?.close();return;}
       worker=new Worker(new URL('./gif-worker.js',import.meta.url),{type:'module'});
       worker.onerror=fail;timer=setTimeout(fail,60000);
       worker.onmessage=({data})=>{
@@ -31,7 +31,7 @@ export function createGifExport(getSnapshot, release) {
           q('.gif-status').textContent=`Sẵn sàng · ${(file.size/1024/1024).toFixed(1)} MB`;
         }
       };
-      worker.postMessage(snapshot,[snapshot.image,snapshot.hand,...(snapshot.sprite?[snapshot.sprite]:[]),...(snapshot.backdrop?[snapshot.backdrop]:[])]);
+      worker.postMessage(snapshot,[snapshot.image,snapshot.hand,...(snapshot.sprite?[snapshot.sprite]:[]),...(snapshot.backdrop?[snapshot.backdrop]:[]),snapshot.scooter]);
     }catch{if(request===sequence)fail();}
   }
   q('[data-retry]').onclick=start;

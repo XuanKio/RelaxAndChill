@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { packScene, unpackScene, validateScene, MAX_LINK_DATA } from '../dist/share.js';
-import { PRESETS } from '../dist/assets.js';
+import { packScene, unpackScene, validateScene, MAX_LINK_DATA } from '../public/share.js';
+import { PRESETS } from '../public/assets.js';
 test('a shared preset round-trips with Unicode names and settings', async () => {
   const input = { ...PRESETS.mochi, name: 'Mèo của Xuân 🐾', flip: true, size: 90 }; const encoded = await packScene(input); assert.deepEqual(await unpackScene(encoded), input);
 });

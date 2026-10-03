@@ -6,13 +6,14 @@ A small browser playground: brush a real cat, pet an uploaded character, and sen
 
 ## Run locally
 
-Node.js 20+:
+Node.js 22+:
 
 ```sh
+npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:8765/. Runtime assets are vendored, so npm installation is not required just to run or test. `npm ci` is only needed when updating the pinned ONNX Runtime dependency.
+Open http://127.0.0.1:8765/. The interface uses Next.js App Router and React controls. Run `npm run build` for a static export in `out/`, then `npm run preview` to verify the published shape. Existing `create.html` links are preserved.
 
 ```sh
 npm run check
@@ -22,11 +23,11 @@ npm test
 
 ## One canvas for play and editing
 
-1. Choose **Chơi ngay** or **Tự tạo**. The same workspace supports both playing and editing.
-2. Use the circular ↑ on the photo to upload JPG/PNG/WebP up to 20 MB. Camera and sample live under **Chỉnh sửa → Ảnh → Tùy chọn ảnh**.
+1. Play directly on the home page, or choose **Tạo ngay**. The same workspace supports both playing and editing.
+2. Use **Chỉnh sửa → Ảnh**: the upload and camera icons choose JPG/PNG/WebP up to 20 MB.
 3. Open **Chỉnh sửa → Tách nền**. Hold a subject for 550 ms, or use **✦ Tách** in the photo corner. **Cọ sửa** opens erase/restore/keep-region and brush size. Undo remains available.
 4. **Tay / lược → Tùy chỉnh thêm** accepts JPG/PNG/WebP tools. Custom tools have their own automatic cutout, erase/restore brush, six undo checkpoints and original-image reset. Rotation (±180°), hue (±30°), saturation (60–140%) and brightness (80–120%) are non-destructive; reset restores neutral angle/color. Each play mode keeps its tool edits during the session. Extra settings include size, softness and background. Close the panel to play immediately; no forced sequence and no navigation away from the canvas.
-5. **Gửi bạn** copies a playable scene. Drag with mouse/finger, or hold Space on the focused canvas to play. On phones, editing keeps the preview above a separately scrolling tool panel, so direction, rotation and color changes remain visible. Tool thumbnails fit their entire image.
+5. The paper plane inside the scene opens **QR / Link** or **Tải GIF**. GIF exports are 400×400, 8-second silent loops that include grooming, boarding the SH, smoke, and the return. Drag with mouse/finger, or hold Space on the focused canvas to play. On phones, editing keeps the preview above a separately scrolling tool panel, so direction, rotation and color changes remain visible. Tool thumbnails fit their entire image.
 
 ## Background removal
 
@@ -41,19 +42,23 @@ Tool cutouts and angle/color settings survive sharing. Legacy links without tool
 
 ## Project structure
 
-- `dist/index.html`, `style.css`, `play.js`: compact menu and preset entry.
-- `dist/create.html`, `editor.css`, `app.js`: unified player, side tools, camera and canvas editing.
-- `dist/grooming.js`: time-based interaction simulation, independent of rendering.
-- `dist/share.js`: versioned, bounded scene schema and encoding.
-- `dist/assets.js`: stable asset keys and normalized tool contact points.
-- `dist/subject-worker.js`, `segmentation.js`: model inference and selected-region mask.
-- `dist/background.js`: lightweight connected-color removal.
+- `app/page.jsx`, `components/Home.jsx`: Next.js home with one create action.
+- `app/create/page.jsx`, `components/Editor.jsx`: statically rendered editor.
+- `components/RangeControl.jsx`, `BrushPicker.jsx`: React controls; `public/studio.css` styles the fixed toolbar and scrolling settings.
+- `public/app.js`: retained canvas, workers, camera and scene runtime; loaded after hydration.
+- `public/grooming.js`: time-based interaction simulation, independent of rendering.
+- `public/share.js`: versioned, bounded scene schema and encoding.
+- `public/assets.js`: stable asset keys and normalized tool contact points.
+- `public/subject-worker.js`, `segmentation.js`: model inference and selected-region mask.
+- `public/background.js`: lightweight connected-color removal.
 - `.agents/skills/relax-and-chill-assets` and `relax-and-chill-ui`: reusable photo-asset and UI workflows.
 
-Only `dist/` is published by GitHub Actions. Pushes to `main` run checks/tests and deploy to GitHub Pages. No user uploads, keys or training images belong in the repository.
+Only Next.js static output `out/` is published by GitHub Actions. Pushes to `main` run checks/tests and deploy to GitHub Pages. No user uploads, keys or training images belong in the repository.
 
 ## Credits
 
-All active cat, brush and hand assets are real photographs. See [credits](dist/credits.html) and [sources, licenses and changes](dist/assets-provenance.md). Image licenses apply independently to each asset and its adaptations. No reference-game artwork or code was copied.
+All active cat, brush and hand assets are real photographs. See [credits](public/credits.html) and [sources, licenses and changes](public/assets-provenance.md). Image licenses apply independently to each asset and its adaptations. Reference comb and brushing audio are documented separately in the credits; gameplay code is implemented locally.
 
 U²-Net by Xuebin Qin and collaborators (Apache-2.0), ONNX weights distributed by rembg; ONNX Runtime by Microsoft (MIT). License texts ship beside their vendored artifacts. Background preprocessing follows the documented U²-NetP normalization used by rembg; see the model decision for sources and checksum.
+
+QR is generated on-device. Custom photos are reduced further for QR capacity while the copied link retains its larger thumbnail. No image upload backend or newly trained animation model is used.
