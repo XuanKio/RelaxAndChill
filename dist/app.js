@@ -52,7 +52,9 @@ function go(step, announce = true) {
   $('hint').textContent=step===4?'Giữ & rê nhẹ · hoặc giữ phím cách':hints[step-1];
   $('preview-label').textContent=step===4?'':step===2?'CHỈNH SỬA CHỦ THỂ':'NHÂN VẬT CỦA BẠN';
   canvas.setAttribute('aria-label',step===4?'Giữ và rê trên nhân vật để chơi, hoặc giữ phím cách.':'Ảnh chỉnh sửa. Giữ chủ thể để tách nền, hoặc chọn cọ và vẽ.');$('stage').classList.toggle('editing',step===2);$('comfort-chip').hidden=step!==4;$('counter').hidden=step!==4;
-  if(announce)notify('');updateButtons();dirty=true;return true;
+  if(announce)notify('');updateButtons();dirty=true;
+  if(step!==4){$('tool-panel').scrollTop=0;if(matchMedia('(max-width:760px)').matches)window.scrollTo({top:0,behavior:'instant'});}
+  return true;
 }
 $('toggle-tools').onclick=()=>go(state.step===4?lastPanel:4);$('close-tools').onclick=$('resume-play').onclick=()=>go(4);
 document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>go(Number(b.dataset.step)));

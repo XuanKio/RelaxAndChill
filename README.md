@@ -26,7 +26,7 @@ npm test
 2. Use the circular ↑ on the photo to upload JPG/PNG/WebP up to 20 MB. Camera and sample live under **Chỉnh sửa → Ảnh → Tùy chọn ảnh**.
 3. Open **Chỉnh sửa → Tách nền**. Hold a subject for 550 ms, or use **✦ Tách** in the photo corner. **Cọ sửa** opens erase/restore/keep-region and brush size. Undo remains available.
 4. **Tay / lược → Tùy chỉnh thêm** accepts JPG/PNG/WebP tools. Custom tools have their own automatic cutout, erase/restore brush, six undo checkpoints and original-image reset. Rotation (±180°), hue (±30°), saturation (60–140%) and brightness (80–120%) are non-destructive; reset restores neutral angle/color. Each play mode keeps its tool edits during the session. Extra settings include size, softness and background. Close the panel to play immediately; no forced sequence and no navigation away from the canvas.
-5. **Gửi bạn** copies a playable scene. Drag with mouse/finger, or hold Space on the focused canvas to play. On phones, the contextual panel sits below the canvas to keep both reachable.
+5. **Gửi bạn** copies a playable scene. Drag with mouse/finger, or hold Space on the focused canvas to play. On phones, editing keeps the preview above a separately scrolling tool panel, so direction, rotation and color changes remain visible. Tool thumbnails fit their entire image.
 
 ## Background removal
 
