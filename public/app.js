@@ -1,6 +1,7 @@
 import { shareURL, readSceneHash } from './short-links.js?v=short-links';
 import { DEFAULT_TOOL_STYLE, tintPixels, validateToolStyle } from './tool-style.js';
 import { paintStamp } from './paint.js';
+import { restoreStamp } from './restore-brush.js';
 import { defaultView, viewPoint, anchoredView, applyView, attachViewNavigation } from './edit-view.js';
 import { draftStore } from './draft.js';
 import QRCode from './vendor/qrcode.esm.js';
@@ -204,7 +205,8 @@ $('keep-selection').onclick = () => {
 function brush(p) {
   const f=state.step===5?backgroundFit():fit(),v=state.step===5?backgroundPoint(p):toImage(p);if(!v)return;const r=Number($('brush').value)/(f.scale*editView.zoom),c=editImage().getContext('2d');
   if(state.tool==='draw'){paintStamp(c,v.x,v.y,r,{shape:$('paint-shape').value,color:$('paint-color').value,opacity:Number($('paint-opacity').value)/100});dirty=true;return;}
-  c.save();c.beginPath();c.arc(v.x,v.y,r,0,Math.PI*2);c.clip();c.clearRect(v.x-r,v.y-r,r*2,r*2);if(state.tool==='restore')c.drawImage(state.step===5?state.bgOriginal:state.original,0,0);c.restore();dirty=true;
+  if(state.tool==='restore'){restoreStamp(c,state.step===5?state.bgOriginal:state.original,v.x,v.y,r);dirty=true;return;}
+  c.save();c.beginPath();c.arc(v.x,v.y,r,0,Math.PI*2);c.clip();c.clearRect(v.x-r,v.y-r,r*2,r*2);c.restore();dirty=true;
 }
 function interruptStroke(){
  if(drawing&&strokeUndo){editImage().getContext('2d').putImageData(strokeUndo.pixels,0,0);editHistory().splice(0,editHistory().length,...strokeUndo.history);state.catKey=strokeUndo.catKey;}

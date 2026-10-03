@@ -1,4 +1,5 @@
 import { alphaBounds } from './background.js';
+import { restoreStamp } from './restore-brush.js';
 
 export function createToolCutout(onApply) {
   const dialog = document.createElement('dialog');
@@ -15,7 +16,7 @@ export function createToolCutout(onApply) {
   const pixels = () => image.getContext('2d').getImageData(0, 0, image.width, image.height);
   const fit = () => { const scale = Math.min(560 / image.width, 560 / image.height); return { scale, x: (600-image.width*scale)/2, y: (600-image.height*scale)/2 }; };
   const status = text => find('.cutout-status').textContent = text;
-  const draw = () => { const f = fit(); ctx.clearRect(0,0,600,600); ctx.drawImage(image,f.x,f.y,image.width*f.scale,image.height*f.scale); find('[data-undo]').disabled = !!worker || !history.length; };
+  const draw = () => { const f = fit(); ctx.clearRect(0,0,600,600);if(mode==='restore'){ctx.save();ctx.globalAlpha=.22;ctx.drawImage(original,f.x,f.y,image.width*f.scale,image.height*f.scale);ctx.restore();} ctx.drawImage(image,f.x,f.y,image.width*f.scale,image.height*f.scale); find('[data-undo]').disabled = !!worker || !history.length; };
   const checkpoint = () => { history.push(pixels()); if(history.length>6)history.shift(); };
   const stop = () => { drawing=false; activePointer=null; worker?.terminate(); worker=null; clearTimeout(timer); dialog.querySelectorAll('button,input').forEach(b=>b.disabled=false); if(image)draw(); };
   const close = () => { stop(); dialog.close(); };
@@ -39,10 +40,10 @@ export function createToolCutout(onApply) {
     worker.onerror=()=>{stop();status('Không chạy được tự động. Bạn vẫn dùng cọ được.');};
     worker.postMessage({buffer:data.data.buffer,width:data.width,height:data.height,seed:null},[data.data.buffer]);
   };
-  dialog.querySelectorAll('[data-brush]').forEach(button=>button.onclick=()=>{mode=button.dataset.brush;dialog.querySelectorAll('[data-brush]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));});
+  dialog.querySelectorAll('[data-brush]').forEach(button=>button.onclick=()=>{mode=button.dataset.brush;dialog.querySelectorAll('[data-brush]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));draw();});
   find('#tool-brush-size').oninput=()=>find('#tool-brush-value').textContent=find('#tool-brush-size').value;
   const point = event => {const r=view.getBoundingClientRect(),f=fit();return {x:((event.clientX-r.left)*600/r.width-f.x)/f.scale,y:((event.clientY-r.top)*600/r.height-f.y)/f.scale};};
-  function dab(point){const c=image.getContext('2d'),radius=Number(find('#tool-brush-size').value)/fit().scale;c.save();c.beginPath();c.arc(point.x,point.y,radius,0,Math.PI*2);c.clip();c.clearRect(point.x-radius,point.y-radius,radius*2,radius*2);if(mode==='restore')c.drawImage(original,0,0);c.restore();}
+  function dab(point){const c=image.getContext('2d'),radius=Number(find('#tool-brush-size').value)/fit().scale;if(mode==='restore'){restoreStamp(c,original,point.x,point.y,radius);return;}c.save();c.beginPath();c.arc(point.x,point.y,radius,0,Math.PI*2);c.clip();c.clearRect(point.x-radius,point.y-radius,radius*2,radius*2);c.restore();}
   view.onpointerdown=event=>{if(worker||drawing||!event.isPrimary)return;event.preventDefault();view.setPointerCapture(event.pointerId);activePointer=event.pointerId;checkpoint();drawing=true;last=point(event);dab(last);draw();};
   view.onpointermove=event=>{if(!drawing||event.pointerId!==activePointer)return;const p=point(event),distance=Math.hypot(p.x-last.x,p.y-last.y),steps=Math.max(1,Math.ceil(distance/3));for(let i=1;i<=steps;i++)dab({x:last.x+(p.x-last.x)*i/steps,y:last.y+(p.y-last.y)*i/steps});last=p;draw();};
   for(const name of ['pointerup','pointercancel','lostpointercapture'])view.addEventListener(name,event=>{if(event.pointerId===activePointer){drawing=false;activePointer=null;}});
