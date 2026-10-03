@@ -6,6 +6,8 @@
 .control-panel .steps button{min-height:40px;border-radius:11px;letter-spacing:0;font-size:12px;font-weight:550}
 .control-panel .steps button[aria-current=step]{color:var(--studio-ink);background:#fff;box-shadow:0 2px 8px #284c3910}
 .control-panel button:focus-visible,.control-panel input:focus-visible{outline:2px solid #72977c;outline-offset:3px}
+/* Keep the name field's keyboard focus inside the scrolling panel. */
+.control-panel #scene-name:focus-visible{outline-offset:-2px}
 .range-label,#manual-controls .range-label{font-size:12px;font-weight:500;line-height:24px;margin:12px 0 0;color:#516b5c}
 .range-label output{min-width:45px;text-align:center;font-variant-numeric:tabular-nums;background:#edf3ed;color:#4d7059;border-radius:7px;padding:0 6px;font-size:11px;line-height:23px}
 input[type=range].studio-range,#manual-controls input[type=range].studio-range{appearance:none;-webkit-appearance:none;display:block;height:36px;min-height:36px;width:100%;margin:0 0 4px;padding:0;background:transparent;border:0;cursor:pointer;touch-action:pan-y}
