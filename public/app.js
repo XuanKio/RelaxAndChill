@@ -20,9 +20,10 @@ import { sampleCoat, furCount, makeFur, advanceFur, drawFur } from './fur.js?v=2
 let styledHand = null, styledSprite = null, styledFrames = [], toolLoadSequence = 0;
 const modeTools = new Map();
 let handSprite = null, furCarry = 0, petCycle = 0;
+let subjectAnimation = null, subjectFrame = -1;
 let grooming = createGrooming(), travel = 0, keyboard = false, smooth = {x:470,y:270}, particles = [], lastParticle = 0;
 const $ = id => document.getElementById(id);
-const sharedHash = /^#(?:play=|mochi(?:\?|$)|muop(?:\?|$)|s=)/.test(location.hash);
+const sharedHash = /^#(?:play=|mochi(?:\?|$)|muop(?:\?|$)|shy(?:\?|$)|s=)/.test(location.hash);
 const playOnly = document.querySelector('[data-play-only="true"]') !== null || sharedHash;
 const createMode = !playOnly && !new URLSearchParams(location.search).has('home');
 document.body.classList.toggle('play-only',playOnly);
@@ -119,6 +120,22 @@ $('open-tool-settings').onclick=()=>setToolSettings(true,true);
 $('back-tool-picker').onclick=()=>setToolSettings(false,true);
 $('tool-panel').addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('tool-settings-open')){e.preventDefault();setToolSettings(false,true);}});
 async function loadImage(url) { const img = new Image(); img.src = url; await img.decode(); return img; }
+async function prepareSubjectAnimation(key) {
+  subjectAnimation=null;subjectFrame=-1;
+  const animation=ASSETS[key]?.animation;if(!animation)return;
+  const atlas=await loadImage(animation.src);
+  subjectAnimation={...animation,atlas,key,total:animation.durations.reduce((a,b)=>a+b,0)};
+}
+function animateSubject(t) {
+  const a=subjectAnimation;
+  if(!a||state.catKey!==a.key||isEditing()||state.busy||reducedMotion)return;
+  let elapsed=t%a.total,index=0;
+  while(index<a.durations.length-1&&elapsed>=a.durations[index])elapsed-=a.durations[index++];
+  if(index===subjectFrame)return;subjectFrame=index;
+  const c=state.image.getContext('2d');c.clearRect(0,0,a.size,a.size);
+  c.drawImage(a.atlas,(index%a.columns)*a.size,Math.floor(index/a.columns)*a.size,a.size,a.size,0,0,a.size,a.size);
+  measure();dirty=true;
+}
 loadImage('assets/explosion.jpg').then(img=>{explosion=img;}).catch(()=>{});
 loadImage('assets/skateboard.png').then(img=>{skate=img;}).catch(()=>{});
 loadImage('assets/sh-scooter.png').then(img=>{scooter=img;}).catch(()=>{});
@@ -358,6 +375,7 @@ const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function isContact(p){const f=fit();if(!f||!state.image)return false;const x=Math.floor((p.x-f.x)/f.scale+f.source.x),y=Math.floor((p.y-f.y)/f.scale+f.source.y);if(x<0||y<0||x>=state.image.width||y>=state.image.height)return false;return state.hitPixels?.[(y*state.image.width+x)*4+3]>40;}
 function frame(t){
  const dt=Math.min(.05,(t-lastFrame)/1000||.016);lastFrame=t;
+ if(!document.hidden&&!$('share-dialog').open&&!toolCutout.active&&!gifExport.active)animateSubject(t);
  if(!document.hidden&&!$('share-dialog').open&&!toolCutout.active&&!gifExport.active&&(dirty||state.step===4)){
   const offsetX=(canvas.width-SIDE)/2,offsetY=(canvas.height-SIDE)/2;
   ctx.setTransform(1,0,0,1,offsetX,offsetY);ctx.clearRect(-offsetX,-offsetY,canvas.width,canvas.height);
@@ -418,7 +436,8 @@ async function boot(){
   $('create-own').hidden=true;
   const saved=createMode&&!location.hash&&!new URLSearchParams(location.search).has('new')?await draftStore().catch(()=>null):null;
   if(createMode&&location.search)history.replaceState(null,'',location.pathname+location.hash);
-  let scene=saved?.settings||await readSceneHash(location.hash);scene=validateScene(scene);state.subjectScale=scene.subjectScale??1;$('subject-size').value=Math.round(state.subjectScale*100);$('subject-size-value').textContent=Math.round(state.subjectScale*100)+'%';
+  let scene=saved?.settings||(createMode&&!location.hash?PRESETS.shy:await readSceneHash(location.hash));scene=validateScene(scene);state.subjectScale=scene.subjectScale??1;$('subject-size').value=Math.round(state.subjectScale*100);$('subject-size-value').textContent=Math.round(state.subjectScale*100)+'%';
+  await prepareSubjectAnimation(scene.cat);
   const img=await loadImage(ASSETS[scene.cat]?.src||scene.cat);setImage(img,scene.name);state.catKey=ASSETS[scene.cat]?scene.cat:null;$('scene-name').value=scene.name;
   if(scene.background){state.background=clone(await loadImage(scene.background));state.bgOriginal=clone(state.background);}
   await selectMode(scene.mode);if(!ASSETS[scene.tool]){state.hand=await loadImage(scene.tool);state.toolKey=null;}else{state.hand=await loadImage(ASSETS[scene.tool].src);state.toolKey=scene.tool;}

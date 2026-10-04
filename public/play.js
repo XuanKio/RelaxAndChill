@@ -6,4 +6,4 @@ document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{
   preview.src='p/?home#preset='+preset;
   preview.title='Chơi cùng '+(preset==='mochi'?'Mochi':'Mướp');
 });
-if(/^#(?:play=|s=|mochi(?:\?|$)|muop(?:\?|$))/.test(location.hash))location.replace(new URL('p/'+location.hash,document.baseURI));
+if(/^#(?:play=|s=|mochi(?:\?|$)|muop(?:\?|$)|shy(?:\?|$))/.test(location.hash))location.replace(new URL('p/'+location.hash,document.baseURI));

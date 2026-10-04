@@ -23,7 +23,7 @@ npm test
 
 ## One canvas for play and editing
 
-1. Play directly on the home page, or choose **Tạo ngay**. The same workspace supports both playing and editing.
+1. Play directly on the home page, or choose **Tạo ngay**. The same workspace supports both playing and editing. **Tạo ngay** opens a fresh scene using the supplied shy-cat GIF instead of reopening a saved personal photo; saved drafts remain available by visiting the creator directly.
 2. Use **Chỉnh sửa → Ảnh**: the upload and camera icons choose JPG/PNG/WebP up to 20 MB.
 3. Open **Chỉnh sửa → Tách nền**. Hold a subject for 550 ms, or use **✦ Tách** in the photo corner. **Cọ sửa** opens erase/restore/keep-region and brush size. Undo remains available.
 4. **Tay / lược → Tùy chỉnh thêm** accepts JPG/PNG/WebP tools. Custom tools have their own automatic cutout, erase/restore brush, six undo checkpoints and original-image reset. Rotation (±180°), hue (±30°), saturation (60–140%) and brightness (80–120%) are non-destructive; reset restores neutral angle/color. Each play mode keeps its tool edits during the session. Extra settings include size, softness and background. Close the panel to play immediately; no forced sequence and no navigation away from the canvas.
@@ -57,7 +57,7 @@ Only Next.js static output `out/` is published by GitHub Actions. Pushes to `mai
 
 ## Credits
 
-All active cat, brush and hand assets are real photographs. See [credits](public/credits.html) and [sources, licenses and changes](public/assets-provenance.md). Image licenses apply independently to each asset and its adaptations. Reference comb and brushing audio are documented separately in the credits; gameplay code is implemented locally.
+The creator default is a cartoon GIF supplied by the owner; the home cat presets, brush and hand assets are photographs. See [credits](public/credits.html) and [sources, licenses and changes](public/assets-provenance.md). Image licenses apply independently to each asset and its adaptations. Reference comb and brushing audio are documented separately in the credits; gameplay code is implemented locally.
 
 U²-Net by Xuebin Qin and collaborators (Apache-2.0), ONNX weights distributed by rembg; ONNX Runtime by Microsoft (MIT). License texts ship beside their vendored artifacts. Background preprocessing follows the documented U²-NetP normalization used by rembg; see the model decision for sources and checksum.
 

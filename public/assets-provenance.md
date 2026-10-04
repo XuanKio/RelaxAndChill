@@ -1,6 +1,10 @@
 # Photo asset provenance
 
-Verified 2026-10-03. All active cat and tool assets come from real photographs; no generative AI imagery is used. Game names are display labels, not the photographed animals' identities.
+Photographic assets verified 2026-10-03. Game names are display labels, not the photographed animals' identities. The creator default is the supplied cartoon GIF documented below.
+
+## Creator default: shy cat — 2026-10-04
+
+Xuân supplied `giphy.gif` and explicitly requested it as the default for “Tạo ngay”. `assets/shy-cat.gif` is the unchanged original. `assets/shy-cat.png` is its first frame; `assets/shy-cat-frames.png` contains its 17 decoded 500 × 500 frames in five columns, preserving the original frame durations and pixels. No generation, repainting or background removal. Original artist, source page and license were not supplied; no ownership or open-source license is claimed for this asset.
 
 ## Mochi / assets/mochi.png
 

@@ -2,7 +2,7 @@ import { PRESETS } from './assets.js';
 import { validateScene, packScene, unpackScene, sceneURL } from './share.js';
 import { uploadScene, downloadScene } from './cloud-share.js';
 
-const presets = { mochi: PRESETS.mochi, muop: PRESETS.tabby };
+const presets = { mochi: PRESETS.mochi, muop: PRESETS.tabby, shy: PRESETS.shy };
 const fields = { n:'name', m:'mode', t:'tool', b:'bg', s:'size', f:'soft', x:'flip', z:'subjectScale' };
 const styles = { r:'rotation', h:'hue', a:'saturation', l:'brightness' };
 function normalize(input) {
@@ -19,7 +19,7 @@ export function compactHash(input) {
   for(const [short,field] of Object.entries(styles))if(scene.toolStyle[field]!==base.toolStyle[field])params.set(short,String(scene.toolStyle[field]));
   return '#'+key+(params.size?'?'+params:'');
 }
-export const isCompactHash=hash=>/^#(?:mochi|muop)(?:\?|$)/.test(hash);
+export const isCompactHash=hash=>/^#(?:mochi|muop|shy)(?:\?|$)/.test(hash);
 export async function readSceneHash(hash) {
   if(hash.startsWith('#s='))return downloadScene(hash.slice(3));
   if(hash.startsWith('#play='))return unpackScene(hash.slice(6));
